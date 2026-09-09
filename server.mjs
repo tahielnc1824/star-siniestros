@@ -85,11 +85,29 @@ const schema = {
         trayectorias: {
           type: 'array', items: {
             type: 'object', additionalProperties: false,
-            properties: { vehiculo_id: { type: 'string' }, descripcion: { type: 'string' } },
-            required: ['vehiculo_id','descripcion']
+            properties: {
+              vehiculo_id: { type: 'string' },
+              descripcion: { type: 'string' },
+              puntos: { type: 'array', items: {
+                type: 'object', additionalProperties: false,
+                properties: { x: { type: 'number' }, y: { type: 'number' } },
+                required: ['x','y']
+              }}
+            },
+            required: ['vehiculo_id','descripcion','puntos']
           }
         },
         elementos: { type: 'array', items: { type: 'string' } },
+        objetos: { type: 'array', items: {
+          type: 'object', additionalProperties: false,
+          properties: {
+            id: { type: 'string' },
+            tipo: { type: 'string', enum: ['arbol','casa','pared','poste','bache','otro'] },
+            descripcion: { type: 'string' },
+            x: { type: 'number' },
+            y: { type: 'number' }
+          }, required: ['id','tipo','descripcion','x','y']
+        }},
         semaforos: { type: 'array', items: {
           type: 'object', additionalProperties: false,
           properties: {
@@ -129,7 +147,7 @@ const schema = {
             }}
           }, required: ['vehiculos','impactos','semaforos']
         }
-      }, required: ['escenario','descripcion_breve','calles','vehiculos','impactos','trayectorias','elementos','semaforos','nivel_confianza','layout']
+      }, required: ['escenario','descripcion_breve','calles','vehiculos','impactos','trayectorias','elementos','objetos','semaforos','nivel_confianza','layout']
     }
   }, required: ['relato_corregido','observaciones','croquis']
 };
@@ -177,6 +195,9 @@ ESTRUCTURA DEL CROQUIS:
 - Identificá también el tipo de cada vehículo cuando el relato lo indique: auto, moto, bicicleta, camión, colectivo, camioneta, utilitario u otro. Si no lo indica, usá 'auto' solo cuando el texto hable genéricamente de auto/vehículo de manera compatible; si realmente no puede saberse, usá 'otro'.
 - Si el relato menciona uno o más semáforos, incluilos en 'semaforos'. Si además dice el color, guardalo; si no, usá 'desconocido'. No agregues semáforos si no aparecen en el relato.
 - En 'layout.semaforos', ubicá cada semáforo aproximadamente donde corresponda dentro de la intersección.
+- Si el relato menciona un árbol, pared, casa/edificación, poste, bache/pozo u otro obstáculo fijo relevante, incluilo en 'objetos' y ubicá x/y de 0 a 100. No agregues objetos decorativos que no influyan en la mecánica.
+- Si el vehículo tuvo más de un impacto o el relato describe un desvío posterior al primer choque, agregá una trayectoria con varios puntos. Los puntos x/y van de 0 a 100 y deben seguir el recorrido aproximado del vehículo en orden cronológico. Si no hay desplazamiento posterior relevante, podés dejar 'trayectorias' vacío.
+- Para un caso como “esquiva un pozo y choca”, incluí el bache como objeto y hacé que la trayectoria muestre el desvío si se puede inferir razonablemente.
 `;
 
 const correctionSchema = {
@@ -184,9 +205,11 @@ const correctionSchema = {
   properties: {
     layout: schema.properties.croquis.properties.layout,
     semaforos: schema.properties.croquis.properties.semaforos,
+    objetos: schema.properties.croquis.properties.objetos,
+    trayectorias: schema.properties.croquis.properties.trayectorias,
     nota: { type: 'string' }
   },
-  required: ['layout','semaforos','nota']
+  required: ['layout','semaforos','objetos','trayectorias','nota']
 };
 
 const correctionInstructions = `
@@ -196,11 +219,15 @@ Vas a revisar SOLO la disposición visual de un croquis de siniestro vial ya edi
 - NO cambies roles, colores ni tipos de vehículo.
 - NO elimines vehículos que el usuario dejó en escena.
 - NO reescribas calles ni reconstruyas todo el croquis.
-- Ajustá únicamente posiciones x/y y ángulos de los vehículos cuando haya una mejora clara, y posiciones de impactos y semáforos.
+- Ajustá únicamente posiciones x/y y ángulos de los vehículos cuando haya una mejora clara, y posiciones de impactos, semáforos, objetos y puntos de trayectoria.
+- Respetá los objetos y trayectorias manuales del usuario salvo que contradigan claramente el relato.
 - Si la escena manual ya es compatible con el relato, mantenela casi igual.
 - No atribuyas responsabilidad.
 - x/y van de 0 a 100. Ángulo: 0 derecha, 90 abajo, -90 arriba, 180 izquierda.
 - Si el relato menciona semáforo, podés incorporarlo o corregir su ubicación. Si no lo menciona y no hay uno manual, no agregues uno.
+- Conservá el color del semáforo indicado por el relato o por la edición manual.
+- Si existen objetos u obstáculos manuales, respetalos salvo contradicción clara. Los objetos usan x/y de 0 a 100.
+- Las trayectorias usan puntos x/y de 0 a 100 en orden cronológico. Solo corregilas si ayuda a representar mejor una secuencia de varios impactos o un desvío.
 - En 'nota', explicá en una sola frase qué cambiaste. Si no hacía falta cambiar casi nada, decilo.
 `;
 
@@ -255,4 +282,4 @@ ${JSON.stringify(escena,null,2)}`;
   }
   if(req.method==='GET')return serveStatic(req,res); res.writeHead(405);res.end('Method not allowed');
 });
-server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.7: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
+server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.8: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});

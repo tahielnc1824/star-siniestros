@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Asistente de Siniestros</title><link rel="stylesheet" href="/styles.css">
+<title>Asistente de Siniestros</title><link rel="icon" type="image/png" href="/favicon.png"><link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <main class="wrap">
@@ -10,7 +10,7 @@
   <div class="brand-main">
     <img class="brand-logo" src="/logo-star.png" alt="STAR Gestiones y Servicios">
     <div class="brand-copy">
-      <div class="eyebrow">Herramienta interna · v0.7</div>
+      <div class="eyebrow">Herramienta interna · v0.8</div>
       <h1 id="appTitle">Asistente de Siniestros</h1>
       <p>Ingresá el relato y, si corresponde, los daños. Nada queda guardado.</p>
     </div>
@@ -46,7 +46,7 @@
 <article class="card editor-card">
 <div class="card-title-row"><div><h2>Croquis</h2><p class="hint">La IA arma una base aproximada. Después podés acomodarla libremente.</p></div><button id="generarCroquis" class="primary small">Generar / rehacer croquis</button></div>
 <div class="editor-toolbar">
-<button data-tool="select" class="tool active">Seleccionar</button><button id="addCar" class="tool">+ Vehículo</button><button id="addArrow" class="tool">+ Flecha</button><button id="addImpact" class="tool">+ Impacto</button><button id="addTraffic" class="tool">+ Semáforo</button><button id="addText" class="tool">+ Texto</button><button id="deleteSelected" class="tool danger">Borrar</button><button id="undo" class="tool">Deshacer</button><button id="corregirIA" class="tool ai-tool">Corregir croquis con IA</button><button id="download" class="tool">Descargar PNG</button>
+<button data-tool="select" class="tool active">Seleccionar</button><button id="addCar" class="tool">+ Vehículo</button><button id="addArrow" class="tool">+ Flecha</button><button id="addImpact" class="tool">+ Impacto</button><button id="addTraffic" class="tool">+ Semáforo</button><button id="addObject" class="tool">+ Objeto</button><button id="addPothole" class="tool">+ Bache</button><button id="addTrajectory" class="tool">+ Trayectoria</button><button id="addText" class="tool">+ Texto</button><button id="deleteSelected" class="tool danger">Borrar</button><button id="undo" class="tool">Deshacer</button><button id="corregirIA" class="tool ai-tool">Corregir croquis con IA</button><button id="download" class="tool">Descargar PNG</button>
 </div>
 <div id="vehicleInspector" class="vehicle-inspector hidden">
   <strong id="inspectorTitle">Vehículo seleccionado</strong>
@@ -56,11 +56,14 @@
 </div>
 <div id="elementInspector" class="vehicle-inspector hidden">
   <strong id="elementTitle">Elemento seleccionado</strong>
-  <button id="rotateLeft" class="tool">↶ 15°</button><button id="rotateRight" class="tool">↷ 15°</button>
+  <span id="rotationControls"><button id="rotateLeft" class="tool">↶ 15°</button><button id="rotateRight" class="tool">↷ 15°</button></span>
+  <label id="trafficStateLabel" class="hidden">Color <select id="trafficState"><option value="rojo">Rojo</option><option value="amarillo">Amarillo</option><option value="verde">Verde</option><option value="desconocido">Sin especificar</option></select></label>
+  <label id="objectKindLabel" class="hidden">Objeto <select id="objectKind"><option value="arbol">Árbol</option><option value="casa">Casa / edificio</option><option value="pared">Pared</option><option value="poste">Poste</option><option value="bache">Bache</option><option value="otro">Otro</option></select></label>
 </div>
 <div class="editor-help">Arrastrá elementos para moverlos. Los vehículos se pueden girar con el control circular. Las flechas y los textos se rotan desde los botones de giro al seleccionarlos. Doble clic sobre un texto para cambiarlo.</div>
 <div id="canvasWrap"><svg id="croquisSvg" viewBox="0 0 1120 560" aria-label="Editor de croquis"></svg></div>
 </article>
 </section>
+<footer class="app-footer">STAR Gestiones y Servicios · Asistente de Siniestros v0.8</footer>
 </main><script src="/app.js"></script>
 </body></html>
