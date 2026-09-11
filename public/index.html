@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Asistente de Siniestros</title><link rel="icon" type="image/png" href="/favicon.png"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/v010.css">
+<title>Asistente de Siniestros</title><link rel="icon" type="image/png" href="/favicon.png"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/v010.css"><link rel="stylesheet" href="/v0101.css">
 </head>
 <body>
 <main class="wrap">
@@ -10,7 +10,7 @@
   <div class="brand-main">
     <img class="brand-logo" src="/logo-star.png" alt="STAR Gestiones y Servicios">
     <div class="brand-copy">
-      <div class="eyebrow">Herramienta interna · v0.10</div>
+      <div class="eyebrow">Herramienta interna · v0.10.1</div>
       <h1 id="appTitle">Asistente de Siniestros</h1>
       <p>Ingresá el relato y, si corresponde, los daños. Nada queda guardado.</p>
     </div>
@@ -23,6 +23,15 @@
 <label for="danos">Daños declarados <small>(opcional)</small></label>
 <textarea id="danos" class="auto-grow" rows="2" placeholder="Ej.: guardabarros delantero derecho, paragolpes delantero..."></textarea>
 <div class="actions"><button id="analizar" class="primary">Analizar siniestro</button><span id="estado" aria-live="polite"></span></div>
+</section>
+<section class="card location-card">
+  <div class="card-title-row"><div><h2>Ubicación de referencia <small>(opcional)</small></h2><p class="hint">Buscá una dirección, esquina o referencia concreta para que el croquis pueda apoyarse en la geometría real de las calles.</p></div></div>
+  <div class="location-row">
+    <input id="ubicacionQuery" type="text" placeholder="Ej.: Callao y Ruta 8, Grand Bourg / San Martín 1540, Los Polvorines">
+    <button id="buscarUbicacion" class="ghost">Buscar ubicación</button>
+  </div>
+  <div id="ubicacionSeleccionada" class="selected-location hidden"></div>
+  <div id="ubicacionResultados" class="location-results hidden"></div>
 </section>
 <section id="resultado" class="results hidden">
 <article class="card"><div class="card-title-row"><h2>Relato corregido</h2><button id="copiar" class="ghost small">Copiar</button></div><textarea id="relatoCorregido" class="auto-grow output-editable" rows="2"></textarea><p class="hint">Podés modificarlo antes de copiarlo.</p></article>
@@ -64,6 +73,6 @@
 <div id="canvasWrap"><svg id="croquisSvg" viewBox="0 0 1120 560" aria-label="Editor de croquis"></svg></div>
 </article>
 </section>
-<footer class="app-footer">STAR Gestiones y Servicios · Asistente de Siniestros v0.10</footer>
-</main><script src="/app.js"></script><script src="/v010.js"></script>
+<footer class="app-footer">STAR Gestiones y Servicios · Asistente de Siniestros v0.10.1</footer>
+</main><script src="/app.js"></script><script src="/v010.js"></script><script src="/v0101.js"></script>
 </body></html>
