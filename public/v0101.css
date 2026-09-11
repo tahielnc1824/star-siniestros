@@ -1,0 +1,17 @@
+input[type=text]{width:100%;border:1px solid #bfd5e3;border-radius:11px;padding:12px 14px;font:inherit;line-height:1.4;outline:none;background:#fff;color:#17324a;transition:border-color .15s,box-shadow .15s}
+input[type=text]:focus{border-color:var(--star-blue);box-shadow:0 0 0 3px rgba(11,131,198,.12)}
+.location-card h2 small{font-size:13px;color:#7a8f9f;font-weight:600}
+.location-row{display:flex;gap:10px;align-items:center;margin-top:12px}
+.location-row button{flex:0 0 auto}
+.location-results{margin-top:12px;display:grid;gap:8px}
+.location-option,.selected-location{border:1px solid #dbe9f1;border-radius:12px;padding:12px 14px;background:#fbfdff}
+.location-option{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.location-copy{min-width:0}
+.location-title{font-weight:800;color:#17324a;margin-bottom:4px}
+.location-meta{font-size:12px;color:#6a8192;line-height:1.45}
+.selected-location{background:#eef7fc;border-color:#bed7e5;margin-top:12px}
+.selected-location strong{display:block;color:#0a6fa8;margin-bottom:4px}
+.location-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.location-badge{display:inline-block;font-size:12px;font-weight:700;background:#dff2fb;color:#075d91;border-radius:999px;padding:4px 8px;margin-right:8px}
+.location-empty{margin-top:10px;color:#60788b;font-size:13px}
+@media(max-width:760px){.location-row{align-items:stretch;flex-direction:column}.location-option{flex-direction:column}.location-option button{align-self:flex-start}}
