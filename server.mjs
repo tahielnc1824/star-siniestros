@@ -198,7 +198,37 @@ ESTRUCTURA DEL CROQUIS:
 - Si el relato menciona un árbol, pared, casa/edificación, poste, bache/pozo u otro obstáculo fijo relevante, incluilo en 'objetos' y ubicá x/y de 0 a 100. No agregues objetos decorativos que no influyan en la mecánica.
 - Si el vehículo tuvo más de un impacto o el relato describe un desvío posterior al primer choque, agregá una trayectoria con varios puntos. Los puntos x/y van de 0 a 100 y deben seguir el recorrido aproximado del vehículo en orden cronológico. Si no hay desplazamiento posterior relevante, podés dejar 'trayectorias' vacío.
 - Para un caso como “esquiva un pozo y choca”, incluí el bache como objeto y hacé que la trayectoria muestre el desvío si se puede inferir razonablemente.
+- Adaptá el escenario a la geometría relatada: usá 'rotonda', 'cruce_t', 'cruce_vias', 'diagonal' o 'cruce_multiple' cuando corresponda. No fuerces todo a una intersección en cruz.
+- Si hay tres o más vías relevantes, usá 'cruce_multiple'. Si una vía entra y termina en otra, usá 'cruce_t'. Si se menciona un paso ferroviario o cruce de vías, usá 'cruce_vias'.
+- Para una calle diagonal, marcá su orientación como 'diagonal' y usá escenario 'diagonal' cuando sea el rasgo principal.
+- En la disposición inicial, respetá circulación por la derecha cuando sea compatible con el relato y no se haya declarado una excepción. Ubicá cada vehículo en el carril derecho de su sentido de marcha.
+- Separá visualmente vehículos, flechas, objetos, baches y trayectorias. Evitá superponerlos salvo cuando la superposición represente de verdad un impacto.
+- Las flechas de sentido deben quedar sobre la calzada, un poco alejadas del vehículo y sin taparlo.
+- Si el relato declara un sentido hacia un destino o referencia (por ejemplo, 'en dirección a Polvorines'), agregalo en 'referencias' como tipo 'sentido'. El texto debe ser corto, por ejemplo '→ Polvorines', y ubicarse cerca del borde del croquis hacia el que continúa esa vía.
+- Si el relato declara una dirección o numeración relevante (por ejemplo, 'frente al 1540' o 'en la puerta de mi casa'), agregala en 'referencias' como tipo 'direccion'. Mostrala discretamente cerca de la vereda o borde correspondiente. No inventes numeración.
+- Las referencias son secundarias: no deben tapar vehículos, impactos, trayectorias ni objetos. Si una referencia no aporta a ubicar el hecho, no la agregues.
 `;
+
+
+// v0.9: escenarios más flexibles y referencias visuales (sentidos/direcciones declaradas).
+schema.properties.croquis.properties.escenario.enum = [
+  'interseccion','calle_recta','ruta','rotonda','estacionamiento','cruce_t','cruce_vias','diagonal','cruce_multiple','otro','indeterminado'
+];
+schema.properties.croquis.properties.referencias = {
+  type: 'array', items: {
+    type: 'object', additionalProperties: false,
+    properties: {
+      id: { type: 'string' },
+      tipo: { type: 'string', enum: ['sentido','direccion'] },
+      texto: { type: 'string' },
+      via: { type: 'string' },
+      borde: { type: 'string', enum: ['izquierdo','derecho','superior','inferior','otro'] },
+      x: { type: 'number' },
+      y: { type: 'number' }
+    }, required: ['id','tipo','texto','via','borde','x','y']
+  }
+};
+schema.properties.croquis.required.push('referencias');
 
 const correctionSchema = {
   type: 'object', additionalProperties: false,
@@ -259,7 +289,7 @@ ${danos||'No informados.'}
 
 CROQUIS ACOMODADO POR EL USUARIO:
 ${JSON.stringify(escena,null,2)}`;
-      const apiRes=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model:MODEL,store:false,reasoning:{effort:'low'},instructions:correctionInstructions,input,text:{format:{type:'json_schema',name:'correccion_croquis_v07',strict:true,schema:correctionSchema}}})});
+      const apiRes=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model:MODEL,store:false,reasoning:{effort:'low'},instructions:correctionInstructions,input,text:{format:{type:'json_schema',name:'correccion_croquis_v09',strict:true,schema:correctionSchema}}})});
       const apiJson=await apiRes.json(); if(!apiRes.ok){console.error(apiJson);return sendJson(res,apiRes.status,{error:apiJson?.error?.message||'Error al consultar la IA.'});}
       let outputText=apiJson.output_text; if(!outputText&&Array.isArray(apiJson.output)){for(const item of apiJson.output){if(item.type==='message'&&Array.isArray(item.content)){const tx=item.content.find(c=>c.type==='output_text');if(tx?.text){outputText=tx.text;break;}}}}
       if(!outputText)return sendJson(res,502,{error:'La IA no devolvió una corrección interpretable.'});
@@ -273,7 +303,7 @@ ${JSON.stringify(escena,null,2)}`;
       if(!relato)return sendJson(res,400,{error:'Ingresá un relato del siniestro.'});
       if(!process.env.OPENAI_API_KEY)return sendJson(res,500,{error:'Falta configurar OPENAI_API_KEY en el archivo .env.'});
       const input=`RELATO ORIGINAL:\n${relato}\n\nDAÑOS DECLARADOS:\n${danos||'No informados.'}`;
-      const apiRes=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model:MODEL,store:false,reasoning:{effort:'low'},instructions,input,text:{format:{type:'json_schema',name:'analisis_siniestro_v07',strict:true,schema}}})});
+      const apiRes=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model:MODEL,store:false,reasoning:{effort:'low'},instructions,input,text:{format:{type:'json_schema',name:'analisis_siniestro_v09',strict:true,schema}}})});
       const apiJson=await apiRes.json(); if(!apiRes.ok){console.error(apiJson);return sendJson(res,apiRes.status,{error:apiJson?.error?.message||'Error al consultar la IA.'});}
       let outputText=apiJson.output_text; if(!outputText&&Array.isArray(apiJson.output)){for(const item of apiJson.output){if(item.type==='message'&&Array.isArray(item.content)){const t=item.content.find(c=>c.type==='output_text');if(t?.text){outputText=t.text;break;}}}}
       if(!outputText)return sendJson(res,502,{error:'La IA no devolvió un resultado interpretable.'});
@@ -282,4 +312,4 @@ ${JSON.stringify(escena,null,2)}`;
   }
   if(req.method==='GET')return serveStatic(req,res); res.writeHead(405);res.end('Method not allowed');
 });
-server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.8: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
+server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.9: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});

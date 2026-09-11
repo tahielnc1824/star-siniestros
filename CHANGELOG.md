@@ -1,5 +1,14 @@
 # Historial de cambios
 
+## v0.9
+- Escenarios más inteligentes: rotondas, cruces en T, cruces ferroviarios, diagonales y cruces múltiples.
+- Colocación inicial de vehículos respetando circulación por la derecha cuando corresponde.
+- Flechas de circulación más finas, sobre la calzada y separadas del vehículo.
+- Mejor distribución inicial de semáforos, obstáculos y baches para reducir superposiciones.
+- Trayectorias posteriores más discretas y fáciles de leer.
+- Indicadores de sentido declarados ubicados cerca del borde correspondiente del croquis.
+- Referencias de dirección o numeración cuando fueron declaradas en el relato.
+
 ## v0.8
 - Favicon con la estrella de STAR.
 - Proyecto preparado exclusivamente para GitHub/Render.

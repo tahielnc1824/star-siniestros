@@ -22,7 +22,7 @@ function el(name,attrs={}){const n=document.createElementNS(NS,name);for(const[k
 function clearSvg(){svg.innerHTML='';selected=null;history=[];updateInspector()}
 function defs(){const d=el('defs'),m=el('marker',{id:'arrowHead',viewBox:'0 0 10 10',refX:'9',refY:'5',markerWidth:'7',markerHeight:'7',orient:'auto-start-reverse'});m.appendChild(el('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:'#24292f'}));d.appendChild(m);svg.appendChild(d)}
 function saveHistory(){history.push(svg.innerHTML);if(history.length>30)history.shift()}
-function road(x,y,w,h,name,orient='h'){const g=el('g',{class:'static-road'});g.appendChild(el('rect',{x,y,width:w,height:h,rx:2,fill:'#e9ecef',stroke:'#c4c9cf','stroke-width':2}));if(orient==='h')g.appendChild(el('line',{x1:x+10,y1:y+h/2,x2:x+w-10,y2:y+h/2,stroke:'#fff','stroke-width':3,'stroke-dasharray':'18 12'}));else g.appendChild(el('line',{x1:x+w/2,y1:y+10,x2:x+w/2,y2:y+h-10,stroke:'#fff','stroke-width':3,'stroke-dasharray':'18 12'}));const t=el('text',{x:orient==='h'?x+18:x+w/2+16,y:orient==='h'?y+25:y+24,'font-size':17,'font-weight':700,fill:'#4b5563','pointer-events':'none',class:'road-name'});t.textContent=name||'Calle';g.appendChild(t);svg.appendChild(g)}
+function roadLegacy(x,y,w,h,name,orient='h'){const g=el('g',{class:'static-road'});g.appendChild(el('rect',{x,y,width:w,height:h,rx:2,fill:'#e9ecef',stroke:'#c4c9cf','stroke-width':2}));if(orient==='h')g.appendChild(el('line',{x1:x+10,y1:y+h/2,x2:x+w-10,y2:y+h/2,stroke:'#fff','stroke-width':3,'stroke-dasharray':'18 12'}));else g.appendChild(el('line',{x1:x+w/2,y1:y+10,x2:x+w/2,y2:y+h-10,stroke:'#fff','stroke-width':3,'stroke-dasharray':'18 12'}));const t=el('text',{x:orient==='h'?x+18:x+w/2+16,y:orient==='h'?y+25:y+24,'font-size':17,'font-weight':700,fill:'#4b5563','pointer-events':'none',class:'road-name'});t.textContent=name||'Calle';g.appendChild(t);svg.appendChild(g)}
 function vehicleColor(id,index){const base=(String(id||'').toUpperCase().charCodeAt(0)||65)-65;return CAR_COLORS[((base>=0?base:index)%CAR_COLORS.length+CAR_COLORS.length)%CAR_COLORS.length]}
 function labelForRole(r){return({asegurado:'Asegurado',tercero:'Tercero',estacionado:'Estacionado',otro:'Otro'})[r]||'Vehículo'}
 function labelForKind(k){return({auto:'Auto',moto:'Moto',bicicleta:'Bicicleta',camion:'Camión',colectivo:'Colectivo',camioneta:'Camioneta',utilitario:'Utilitario',otro:'Otro'})[k]||'Vehículo'}
@@ -47,10 +47,10 @@ function objectLabel(k){return({arbol:'Árbol',casa:'Casa / edificio',pared:'Par
 function renderObject(g){const k=g.dataset.kind||'otro';g.innerHTML='';if(k==='arbol'){g.appendChild(el('circle',{cx:0,cy:-6,r:17,fill:'#95c987',stroke:'#356b32','stroke-width':2}));g.appendChild(el('rect',{x:-4,y:8,width:8,height:18,fill:'#8b5a2b',stroke:'#5f3b1e'}))}else if(k==='casa'){g.appendChild(el('rect',{x:-22,y:-13,width:44,height:31,fill:'#f4e4c1',stroke:'#555','stroke-width':2}));g.appendChild(el('polygon',{points:'-27,-13 0,-31 27,-13',fill:'#c86f61',stroke:'#555','stroke-width':2}))}else if(k==='pared'){g.appendChild(el('rect',{x:-32,y:-7,width:64,height:14,fill:'#b9b9b9',stroke:'#555','stroke-width':2}))}else if(k==='poste'){g.appendChild(el('rect',{x:-4,y:-25,width:8,height:50,rx:2,fill:'#777',stroke:'#444'}))}else if(k==='bache'){g.appendChild(el('ellipse',{cx:0,cy:0,rx:24,ry:13,fill:'#4a4a4a',stroke:'#111','stroke-width':2,'stroke-dasharray':'4 3'}));g.appendChild(el('ellipse',{cx:-5,cy:-2,rx:11,ry:5,fill:'#2b2b2b'}))}else{g.appendChild(el('rect',{x:-20,y:-20,width:40,height:40,rx:4,fill:'#d9dde3',stroke:'#555','stroke-width':2}))}const lab=el('text',{x:0,y:k==='arbol'?43:38,'font-size':11,'font-weight':700,'text-anchor':'middle',fill:'#344054','pointer-events':'none'});lab.textContent=objectLabel(k);g.appendChild(lab)}
 function sceneObject(x,y,kind='otro',id='O1'){const g=el('g',{class:'editable scene-object','data-type':'object','data-kind':kind,'data-id':id,'data-x':x,'data-y':y,'data-angle':0,transform:`translate(${x} ${y})`,cursor:'grab'});renderObject(g);svg.appendChild(g);bindEditable(g);return g}
 function trajectory(points=[[120,120],[220,170],[330,210]],vehicleId=''){const g=el('g',{class:'editable trajectory','data-type':'trajectory','data-vehicle-id':vehicleId,cursor:'grab'});g.dataset.points=JSON.stringify(points);renderTrajectory(g);svg.appendChild(g);bindTrajectory(g);return g}
-function renderTrajectory(g){const pts=JSON.parse(g.dataset.points||'[]');g.innerHTML='';if(pts.length<2)return;g.appendChild(el('polyline',{points:pts.map(p=>`${p.x},${p.y}`).join(' '),fill:'none',stroke:'#146aa1','stroke-width':4,'stroke-linecap':'round','stroke-linejoin':'round','marker-end':'url(#arrowHead)'}));pts.forEach((p,i)=>g.appendChild(el('circle',{cx:p.x,cy:p.y,r:6,class:'trajectory-handle','data-index':i,fill:'#fff',stroke:'#146aa1','stroke-width':2,cursor:'move'})))}
+function renderTrajectoryLegacy(g){const pts=JSON.parse(g.dataset.points||'[]');g.innerHTML='';if(pts.length<2)return;g.appendChild(el('polyline',{points:pts.map(p=>`${p.x},${p.y}`).join(' '),fill:'none',stroke:'#146aa1','stroke-width':4,'stroke-linecap':'round','stroke-linejoin':'round','marker-end':'url(#arrowHead)'}));pts.forEach((p,i)=>g.appendChild(el('circle',{cx:p.x,cy:p.y,r:6,class:'trajectory-handle','data-index':i,fill:'#fff',stroke:'#146aa1','stroke-width':2,cursor:'move'})))}
 function bindTrajectory(g){g.addEventListener('pointerdown',e=>{e.stopPropagation();select(g);saveHistory();const p=point(e),pts=JSON.parse(g.dataset.points||'[]'),idx=e.target.classList.contains('trajectory-handle')?Number(e.target.dataset.index):-1;drag={node:g,mode:idx>=0?'trajectory-point':'trajectory-move',start:p,points:pts,index:idx};g.setPointerCapture(e.pointerId)});g.addEventListener('pointermove',e=>{if(!drag||drag.node!==g)return;const p=point(e),dx=p.x-drag.start.x,dy=p.y-drag.start.y;let pts=drag.points.map(q=>({...q}));if(drag.mode==='trajectory-point'){pts[drag.index].x+=dx;pts[drag.index].y+=dy}else pts=pts.map(q=>({x:q.x+dx,y:q.y+dy}));g.dataset.points=JSON.stringify(pts);renderTrajectory(g)});g.addEventListener('pointerup',()=>drag=null)}
 
-function generateSketch(c){clearSvg();svg.setAttribute('viewBox',`0 0 ${SVG_W} ${SVG_H}`);defs();saveHistory();const streets=c.calles||[];if(c.escenario==='interseccion'||streets.length>=2){road(0,220,DRAW_W,125,textOr(streets[0]?.nombre,'Calle 1'),'h');road(370,0,125,SVG_H,textOr(streets[1]?.nombre,'Calle 2'),'v')}else road(0,215,DRAW_W,130,textOr(streets[0]?.nombre,'Calle'),'h');const layoutVehicles=new Map((c.layout?.vehiculos||[]).map(v=>[String(v.id),v]));const fallback=[[240,280],[432,122],[635,378],[690,180],[170,385],[610,120]];(c.vehiculos||[]).forEach((v,i)=>{const m=layoutVehicles.get(String(v.id));let[x,y]=fallback[i]||[160+110*i,180+50*(i%3)];if(m){x=Math.max(45,Math.min(DRAW_W-45,(Number(m.x)/100)*DRAW_W));y=Math.max(45,Math.min(SVG_H-45,(Number(m.y)/100)*SVG_H))}else if(v.rol==='estacionado'){x=638;y=380}const ang=m&&Number.isFinite(Number(m.angulo))?Number(m.angulo):inferDirection(v,i);vehicle(x,y,v.id||String.fromCharCode(65+i),v.rol,v.tipo_vehiculo||'auto',ang,vehicleColor(v.id,i));if(v.rol!=='estacionado'){const rad=ang*Math.PI/180;arrow(x-Math.cos(rad)*90,y-Math.sin(rad)*90,x-Math.cos(rad)*45,y-Math.sin(rad)*45)}});const impacts=c.layout?.impactos||[];(impacts.length?impacts:[{x:50,y:50}]).forEach(i=>impact(Math.max(20,Math.min(DRAW_W-20,(Number(i.x)/100)*DRAW_W)),Math.max(20,Math.min(SVG_H-20,(Number(i.y)/100)*SVG_H))));const semById=new Map((c.semaforos||[]).map(s=>[String(s.id),s]));(c.layout?.semaforos||[]).forEach((s,i)=>{const meta=semById.get(String(s.id))||{};trafficLight(Math.max(20,Math.min(DRAW_W-20,(Number(s.x)/100)*DRAW_W)),Math.max(28,Math.min(SVG_H-28,(Number(s.y)/100)*SVG_H)),meta.estado||'desconocido',s.id||`S${i+1}`)});(c.objetos||[]).forEach((o,i)=>sceneObject(Math.max(20,Math.min(DRAW_W-20,(Number(o.x)/100)*DRAW_W)),Math.max(20,Math.min(SVG_H-20,(Number(o.y)/100)*SVG_H)),o.tipo||'otro',o.id||`O${i+1}`));(c.trayectorias||[]).forEach(tr=>{if((tr.puntos||[]).length>=2)trajectory(tr.puntos.map(p=>({x:(Number(p.x)/100)*DRAW_W,y:(Number(p.y)/100)*SVG_H})),tr.vehiculo_id||'')});renderLegendFromCurrent()}
+function generateSketchLegacy(c){clearSvg();svg.setAttribute('viewBox',`0 0 ${SVG_W} ${SVG_H}`);defs();saveHistory();const streets=c.calles||[];if(c.escenario==='interseccion'||streets.length>=2){road(0,220,DRAW_W,125,textOr(streets[0]?.nombre,'Calle 1'),'h');road(370,0,125,SVG_H,textOr(streets[1]?.nombre,'Calle 2'),'v')}else road(0,215,DRAW_W,130,textOr(streets[0]?.nombre,'Calle'),'h');const layoutVehicles=new Map((c.layout?.vehiculos||[]).map(v=>[String(v.id),v]));const fallback=[[240,280],[432,122],[635,378],[690,180],[170,385],[610,120]];(c.vehiculos||[]).forEach((v,i)=>{const m=layoutVehicles.get(String(v.id));let[x,y]=fallback[i]||[160+110*i,180+50*(i%3)];if(m){x=Math.max(45,Math.min(DRAW_W-45,(Number(m.x)/100)*DRAW_W));y=Math.max(45,Math.min(SVG_H-45,(Number(m.y)/100)*SVG_H))}else if(v.rol==='estacionado'){x=638;y=380}const ang=m&&Number.isFinite(Number(m.angulo))?Number(m.angulo):inferDirection(v,i);vehicle(x,y,v.id||String.fromCharCode(65+i),v.rol,v.tipo_vehiculo||'auto',ang,vehicleColor(v.id,i));if(v.rol!=='estacionado'){const rad=ang*Math.PI/180;arrow(x-Math.cos(rad)*90,y-Math.sin(rad)*90,x-Math.cos(rad)*45,y-Math.sin(rad)*45)}});const impacts=c.layout?.impactos||[];(impacts.length?impacts:[{x:50,y:50}]).forEach(i=>impact(Math.max(20,Math.min(DRAW_W-20,(Number(i.x)/100)*DRAW_W)),Math.max(20,Math.min(SVG_H-20,(Number(i.y)/100)*SVG_H))));const semById=new Map((c.semaforos||[]).map(s=>[String(s.id),s]));(c.layout?.semaforos||[]).forEach((s,i)=>{const meta=semById.get(String(s.id))||{};trafficLight(Math.max(20,Math.min(DRAW_W-20,(Number(s.x)/100)*DRAW_W)),Math.max(28,Math.min(SVG_H-28,(Number(s.y)/100)*SVG_H)),meta.estado||'desconocido',s.id||`S${i+1}`)});(c.objetos||[]).forEach((o,i)=>sceneObject(Math.max(20,Math.min(DRAW_W-20,(Number(o.x)/100)*DRAW_W)),Math.max(20,Math.min(SVG_H-20,(Number(o.y)/100)*SVG_H)),o.tipo||'otro',o.id||`O${i+1}`));(c.trayectorias||[]).forEach(tr=>{if((tr.puntos||[]).length>=2)trajectory(tr.puntos.map(p=>({x:(Number(p.x)/100)*DRAW_W,y:(Number(p.y)/100)*SVG_H})),tr.vehiculo_id||'')});renderLegendFromCurrent()}
 function renderLegendFromCurrent(){svg.querySelector('#legendGroup')?.remove();const g=el('g',{id:'legendGroup'});g.appendChild(el('rect',{x:LEGEND_X-10,y:0,width:SVG_W-LEGEND_X+10,height:SVG_H,fill:'#fff',stroke:'#d6dbe1'}));let y=28;const title=el('text',{x:LEGEND_X+12,y,'font-size':16,'font-weight':800});title.textContent='Glosario';g.appendChild(title);y=58;[...svg.querySelectorAll('.vehicle')].forEach((n,i)=>{g.appendChild(el('rect',{x:LEGEND_X+12,y:y-13,width:22,height:14,rx:4,fill:n.dataset.color||vehicleColor(n.dataset.id,i),stroke:'#344054'}));const t=el('text',{x:LEGEND_X+44,y,'font-size':12.5,fill:'#344054'});t.textContent=`${n.dataset.id} · ${labelForRole(n.dataset.role)} · ${labelForKind(n.dataset.kind)}`;g.appendChild(t);y+=23});if(svg.querySelector('.traffic-light')){const t=el('text',{x:LEGEND_X+12,y:y+10,'font-size':12.5,fill:'#344054'});t.textContent='Semáforo: color visible';g.appendChild(t);y+=25}if(svg.querySelector('.scene-object')){const t=el('text',{x:LEGEND_X+12,y:y+10,'font-size':12.5,fill:'#344054'});t.textContent='Objetos / obstáculos';g.appendChild(t);y+=25}if(svg.querySelector('.trajectory')){const t=el('text',{x:LEGEND_X+12,y:y+10,'font-size':12.5,fill:'#146aa1'});t.textContent='Trayectoria posterior';g.appendChild(t);y+=25}g.appendChild(el('line',{x1:LEGEND_X+12,y1:y,x2:SVG_W-18,y2:y,stroke:'#d0d5dd'}));y+=24;g.appendChild(el('line',{x1:LEGEND_X+16,y1:y-6,x2:LEGEND_X+58,y2:y-6,stroke:'#24292f','stroke-width':4,'marker-end':'url(#arrowHead)'}));const a=el('text',{x:LEGEND_X+70,y:y-1,'font-size':12,fill:'#344054'});a.textContent='Sentido de circulación';g.appendChild(a);y+=29;const ix=LEGEND_X+28;g.appendChild(el('line',{x1:ix-8,y1:y-12,x2:ix+8,y2:y+4,stroke:'#b42318','stroke-width':4}));g.appendChild(el('line',{x1:ix+8,y1:y-12,x2:ix-8,y2:y+4,stroke:'#b42318','stroke-width':4}));const it=el('text',{x:LEGEND_X+70,y:y-1,'font-size':12,fill:'#344054'});it.textContent='Punto de impacto';g.appendChild(it);svg.appendChild(g)}
 
 function point(evt){const p=svg.createSVGPoint();p.x=evt.clientX;p.y=evt.clientY;return p.matrixTransform(svg.getScreenCTM().inverse())}
@@ -84,3 +84,132 @@ $('download').onclick=()=>{const clone=svg.cloneNode(true);clone.setAttribute('x
 function armSecret(){secretArmed=true;secretTyped='';clearTimeout(secretTimer);secretTimer=setTimeout(()=>{secretArmed=false;secretTyped=''},4000)}
 function togglePizzaMode(){pizzaMode=!pizzaMode;svg.querySelectorAll('.vehicle').forEach(renderVehicleAppearance);renderLegendFromCurrent();estado.textContent=pizzaMode?'Modo alternativo activado.':'Modo alternativo desactivado.'}
 appTitle?.addEventListener('dblclick',e=>{if(e.altKey)armSecret()});document.addEventListener('keydown',e=>{if(!secretArmed)return;if(/^[a-zA-Z]$/.test(e.key)){secretTyped+=e.key.toLowerCase();if(!'muzza'.startsWith(secretTyped)){secretArmed=false;secretTyped='';return}if(secretTyped==='muzza'){secretArmed=false;secretTyped='';clearTimeout(secretTimer);togglePizzaMode()}}});
+
+// ===== v0.9: geometría de escenario, circulación y referencias =====
+function road(x,y,w,h,name,orient='h'){
+  const g=el('g',{class:'static-road'});
+  g.appendChild(el('rect',{x,y,width:w,height:h,rx:2,fill:'#e9ecef',stroke:'#c4c9cf','stroke-width':2}));
+  if(orient==='h') g.appendChild(el('line',{x1:x+10,y1:y+h/2,x2:x+w-10,y2:y+h/2,stroke:'#fff','stroke-width':3,'stroke-dasharray':'18 12'}));
+  else g.appendChild(el('line',{x1:x+w/2,y1:y+10,x2:x+w/2,y2:y+h-10,stroke:'#fff','stroke-width':3,'stroke-dasharray':'18 12'}));
+  const t=el('text',{x:orient==='h'?x+18:x+w/2+16,y:orient==='h'?y+25:y+24,'font-size':17,'font-weight':700,fill:'#4b5563','pointer-events':'none',class:'road-name'});
+  t.textContent=name||'Calle';g.appendChild(t);svg.appendChild(g);return g;
+}
+function diagonalRoad(cx,cy,length,width,name,angle=-32){
+  const x=cx-length/2,y=cy-width/2;
+  const g=el('g',{class:'static-road',transform:`rotate(${angle} ${cx} ${cy})`});
+  g.appendChild(el('rect',{x,y,width:length,height:width,rx:2,fill:'#e9ecef',stroke:'#c4c9cf','stroke-width':2}));
+  g.appendChild(el('line',{x1:x+12,y1:cy,x2:x+length-12,y2:cy,stroke:'#fff','stroke-width':3,'stroke-dasharray':'18 12'}));
+  const t=el('text',{x:x+22,y:y+26,'font-size':17,'font-weight':700,fill:'#4b5563','pointer-events':'none',class:'road-name'});t.textContent=name||'Diagonal';g.appendChild(t);svg.appendChild(g);return g;
+}
+function drawRailCrossing(){
+  const g=el('g',{class:'static-road'}),x=430;
+  g.appendChild(el('line',{x1:x-11,y1:0,x2:x-11,y2:SVG_H,stroke:'#555','stroke-width':3}));
+  g.appendChild(el('line',{x1:x+11,y1:0,x2:x+11,y2:SVG_H,stroke:'#555','stroke-width':3}));
+  for(let y=8;y<SVG_H;y+=18)g.appendChild(el('line',{x1:x-20,y1:y,x2:x+20,y2:y,stroke:'#8a6a48','stroke-width':3}));
+  const t=el('text',{x:x+28,y:34,'font-size':14,'font-weight':700,fill:'#5f5144','pointer-events':'none'});t.textContent='Vías';g.appendChild(t);svg.appendChild(g);
+}
+function drawRoundabout(streets){
+  const cx=430,cy=280,r=82,roadW=105;
+  // accesos principales
+  road(0,cy-roadW/2,cx-r,roadW,textOr(streets[0]?.nombre,'Acceso'),'h');
+  road(cx+r,cy-roadW/2,DRAW_W-(cx+r),roadW,textOr(streets[0]?.nombre,'Acceso'),'h');
+  road(cx-roadW/2,0,roadW,cy-r,textOr(streets[1]?.nombre,'Acceso'),'v');
+  road(cx-roadW/2,cy+r,roadW,SVG_H-(cy+r),textOr(streets[1]?.nombre,'Acceso'),'v');
+  const g=el('g',{class:'static-road'});
+  g.appendChild(el('circle',{cx,cy,r:r+roadW/2,fill:'#e9ecef',stroke:'#c4c9cf','stroke-width':2}));
+  g.appendChild(el('circle',{cx,cy,r:r-roadW/2+8,fill:'#fafafa',stroke:'#c4c9cf','stroke-width':2}));
+  g.appendChild(el('circle',{cx,cy,r:r,fill:'none',stroke:'#fff','stroke-width':3,'stroke-dasharray':'18 12'}));
+  svg.appendChild(g);
+}
+function drawScenario(c){
+  const streets=c.calles||[],sc=c.escenario||'indeterminado';
+  if(sc==='rotonda'){drawRoundabout(streets);return;}
+  if(sc==='cruce_vias'){
+    road(0,220,DRAW_W,125,textOr(streets[0]?.nombre,'Calle'),'h');drawRailCrossing();return;
+  }
+  if(sc==='cruce_t'){
+    road(0,220,DRAW_W,125,textOr(streets[0]?.nombre,'Calle 1'),'h');
+    road(370,0,125,282,textOr(streets[1]?.nombre,'Calle 2'),'v');return;
+  }
+  if(sc==='diagonal'){
+    road(0,220,DRAW_W,125,textOr(streets[0]?.nombre,'Calle 1'),'h');
+    diagonalRoad(430,280,980,118,textOr(streets[1]?.nombre,'Diagonal'),-35);return;
+  }
+  if(sc==='cruce_multiple'){
+    road(0,220,DRAW_W,125,textOr(streets[0]?.nombre,'Calle 1'),'h');
+    road(370,0,125,SVG_H,textOr(streets[1]?.nombre,'Calle 2'),'v');
+    if(streets[2]) diagonalRoad(430,280,980,104,textOr(streets[2]?.nombre,'Calle 3'),32);return;
+  }
+  if(sc==='interseccion'||streets.length>=2){
+    road(0,220,DRAW_W,125,textOr(streets[0]?.nombre,'Calle 1'),'h');
+    if(streets[1]?.orientacion==='diagonal') diagonalRoad(430,280,980,118,textOr(streets[1]?.nombre,'Calle 2'),-35);
+    else road(370,0,125,SVG_H,textOr(streets[1]?.nombre,'Calle 2'),'v');
+    if(streets[2]) diagonalRoad(430,280,980,96,textOr(streets[2]?.nombre,'Calle 3'),32);
+    return;
+  }
+  road(0,215,DRAW_W,130,textOr(streets[0]?.nombre,sc==='ruta'?'Ruta':'Calle'),'h');
+}
+function normAngle(a){let n=((Number(a)||0)%360+360)%360;if(n>180)n-=360;return n}
+function snapToRightLane(v,x,y,ang,c){
+  const sc=c.escenario||'';if(!['interseccion','calle_recta','ruta','cruce_t','cruce_vias'].includes(sc))return{x,y};
+  const a=normAngle(ang),via=(v.via||'').toLowerCase(),streets=c.calles||[];
+  const first=(streets[0]?.nombre||'').toLowerCase(),second=(streets[1]?.nombre||'').toLowerCase();
+  const isFirst=via&&first&&via.includes(first),isSecond=via&&second&&via.includes(second);
+  if(isFirst||(!isSecond&&(Math.abs(a)<45||Math.abs(a)>135))){
+    if(Math.abs(a)<45)y=312; else if(Math.abs(a)>135)y=252;
+  }else if(isSecond||Math.abs(Math.abs(a)-90)<45){
+    if(a>45&&a<135)x=402; else if(a<-45&&a>-135)x=462;
+  }
+  return{x,y};
+}
+function vehicleArrow(x,y,ang){
+  const rad=ang*Math.PI/180,back=155,len=58;
+  const sx=x-Math.cos(rad)*back,sy=y-Math.sin(rad)*back;
+  arrow(sx,sy,sx+Math.cos(rad)*len,sy+Math.sin(rad)*len);
+  const g=svg.lastElementChild;if(g){const line=g.querySelector('line');if(line)line.setAttribute('stroke-width','3.5')}
+}
+function freeSpot(x,y,occupied,min=58){
+  let px=x,py=y;for(let tries=0;tries<8;tries++){
+    const hit=occupied.some(p=>Math.hypot(px-p.x,py-p.y)<min);if(!hit)break;
+    const a=(tries*47)*Math.PI/180;px=x+Math.cos(a)*(min+18);py=y+Math.sin(a)*(min+18);
+    px=Math.max(28,Math.min(DRAW_W-28,px));py=Math.max(28,Math.min(SVG_H-28,py));
+  }return{x:px,y:py};
+}
+function referenceLabel(ref){
+  let x=(Number(ref.x)/100)*DRAW_W,y=(Number(ref.y)/100)*SVG_H;
+  if(!Number.isFinite(x)||!Number.isFinite(y)){x=740;y=35;}
+  if(ref.borde==='derecho'){x=Math.min(DRAW_W-18,Math.max(x,DRAW_W-145));}
+  if(ref.borde==='izquierdo'){x=Math.max(18,Math.min(x,145));}
+  if(ref.borde==='superior'){y=Math.max(24,Math.min(y,55));}
+  if(ref.borde==='inferior'){y=Math.min(SVG_H-18,Math.max(y,SVG_H-55));}
+  const g=addLabel(x,y,ref.texto||'Referencia');g.dataset.referenceType=ref.tipo||'sentido';
+  const t=g.querySelector('text');if(t){t.setAttribute('font-size',ref.tipo==='direccion'?'13':'14');t.setAttribute('font-weight',ref.tipo==='direccion'?'600':'700');t.setAttribute('fill',ref.tipo==='direccion'?'#60788b':'#0a6fa8');}
+}
+function renderTrajectory(g){
+  const pts=JSON.parse(g.dataset.points||'[]');g.innerHTML='';if(pts.length<2)return;
+  g.appendChild(el('polyline',{points:pts.map(p=>`${p.x},${p.y}`).join(' '),fill:'none',stroke:'#146aa1','stroke-width':3,'stroke-dasharray':'8 5','stroke-linecap':'round','stroke-linejoin':'round','marker-end':'url(#arrowHead)',opacity:.9}));
+  pts.forEach((p,i)=>g.appendChild(el('circle',{cx:p.x,cy:p.y,r:5,class:'trajectory-handle','data-index':i,fill:'#fff',stroke:'#146aa1','stroke-width':2,cursor:'move'})));
+}
+function generateSketch(c){
+  clearSvg();svg.setAttribute('viewBox',`0 0 ${SVG_W} ${SVG_H}`);defs();saveHistory();drawScenario(c);
+  const layoutVehicles=new Map((c.layout?.vehiculos||[]).map(v=>[String(v.id),v]));
+  const fallback=[[240,312],[432,118],[635,378],[690,180],[170,385],[610,120]],occupied=[];
+  (c.vehiculos||[]).forEach((v,i)=>{
+    const m=layoutVehicles.get(String(v.id));let[x,y]=fallback[i]||[160+110*i,180+50*(i%3)];
+    if(m){x=Math.max(45,Math.min(DRAW_W-45,(Number(m.x)/100)*DRAW_W));y=Math.max(45,Math.min(SVG_H-45,(Number(m.y)/100)*SVG_H));}
+    else if(v.rol==='estacionado'){x=638;y=380;}
+    const ang=m&&Number.isFinite(Number(m.angulo))?Number(m.angulo):inferDirection(v,i);
+    ({x,y}=snapToRightLane(v,x,y,ang,c));occupied.push({x,y});
+    vehicle(x,y,v.id||String.fromCharCode(65+i),v.rol,v.tipo_vehiculo||'auto',ang,vehicleColor(v.id,i));
+    if(v.rol!=='estacionado')vehicleArrow(x,y,ang);
+  });
+  const impacts=c.layout?.impactos||[];(impacts.length?impacts:[{x:50,y:50}]).forEach(i=>{
+    const x=Math.max(20,Math.min(DRAW_W-20,(Number(i.x)/100)*DRAW_W)),y=Math.max(20,Math.min(SVG_H-20,(Number(i.y)/100)*SVG_H));impact(x,y);occupied.push({x,y});
+  });
+  const semById=new Map((c.semaforos||[]).map(s=>[String(s.id),s]));
+  (c.layout?.semaforos||[]).forEach((s,i)=>{const meta=semById.get(String(s.id))||{};let x=(Number(s.x)/100)*DRAW_W,y=(Number(s.y)/100)*SVG_H;({x,y}=freeSpot(x,y,occupied,52));trafficLight(x,y,meta.estado||'desconocido',s.id||`S${i+1}`);occupied.push({x,y});});
+  (c.objetos||[]).forEach((o,i)=>{let x=(Number(o.x)/100)*DRAW_W,y=(Number(o.y)/100)*SVG_H;({x,y}=freeSpot(x,y,occupied,o.tipo==='bache'?52:64));sceneObject(x,y,o.tipo||'otro',o.id||`O${i+1}`);occupied.push({x,y});});
+  (c.trayectorias||[]).forEach(tr=>{if((tr.puntos||[]).length>=2)trajectory(tr.puntos.map(p=>({x:(Number(p.x)/100)*DRAW_W,y:(Number(p.y)/100)*SVG_H})),tr.vehiculo_id||'')});
+  (c.referencias||[]).forEach(referenceLabel);
+  renderLegendFromCurrent();
+}
