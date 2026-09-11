@@ -1,0 +1,4 @@
+/* v0.10: croquis con estética de mapa esquemático */
+#canvasWrap{background:linear-gradient(180deg,#fbfcfd 0,#f4f6f8 100%)}
+.road-label text{user-select:none}
+.road-label{filter:drop-shadow(0 1px 0 rgba(255,255,255,.8))}
