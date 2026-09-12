@@ -25,7 +25,7 @@
 <div class="actions"><button id="analizar" class="primary">Analizar siniestro</button><span id="estado" aria-live="polite"></span></div>
 </section>
 <section class="card location-card">
-  <div class="card-title-row"><div><h2>Ubicación de referencia <small>(opcional)</small></h2><p class="hint">Para cruces complejos, podés marcar el punto exacto en el mapa y usar la forma real de las calles en el croquis.</p></div></div>
+  <div class="card-title-row"><div><h2>Ubicación de referencia <small>(opcional)</small></h2><p class="hint">Para cruces complejos, podés marcar el punto exacto en el mapa y usar solo la forma de las calles cercanas.</p></div></div>
   <div class="location-row">
     <input id="ubicacionQuery" type="text" placeholder="Ej.: Callao y Ruta 8, Grand Bourg / San Martín 1540, Los Polvorines">
     <button id="buscarUbicacion" class="ghost">Buscar ubicación</button>
@@ -34,7 +34,7 @@
   <div id="ubicacionSeleccionada" class="selected-location hidden"></div>
   <div id="ubicacionResultados" class="location-results hidden"></div>
   <div id="mapaPickerPanel" class="map-picker-panel hidden">
-    <div class="map-picker-head"><div><strong>Marcá el lugar exacto</strong><div class="map-picker-help">Buscá solo la zona si hace falta, mové el mapa y hacé clic en el cruce. El sistema intentará leer las calles alrededor durante unos segundos, pero no te va a dejar esperando.</div></div></div>
+    <div class="map-picker-head"><div><strong>Marcá el lugar exacto</strong><div class="map-picker-help">Buscá solo la zona si hace falta, mové el mapa y hacé clic en el cruce. El sistema tomará únicamente las calles inmediatas al punto.</div></div></div>
     <div class="map-search-row"><input id="zonaMapaQuery" type="text" placeholder="Ej.: Grand Bourg, Buenos Aires"><button id="buscarZonaMapa" class="ghost small">Ir a zona</button></div>
     <div id="mapaPicker" class="map-picker"></div>
     <div id="mapaPickerStatus" class="map-status">Hacé clic sobre el punto exacto del siniestro.</div>
