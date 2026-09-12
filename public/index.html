@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Asistente de Siniestros</title><link rel="icon" type="image/png" href="/favicon.png"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/v010.css"><link rel="stylesheet" href="/v0101.css">
+<title>Asistente de Siniestros</title><link rel="icon" type="image/png" href="/favicon.png"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/v010.css"><link rel="stylesheet" href="/v0101.css"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="/v0102.css">
 </head>
 <body>
 <main class="wrap">
@@ -10,7 +10,7 @@
   <div class="brand-main">
     <img class="brand-logo" src="/logo-star.png" alt="STAR Gestiones y Servicios">
     <div class="brand-copy">
-      <div class="eyebrow">Herramienta interna · v0.10.1</div>
+      <div class="eyebrow">Herramienta interna · v0.10.2</div>
       <h1 id="appTitle">Asistente de Siniestros</h1>
       <p>Ingresá el relato y, si corresponde, los daños. Nada queda guardado.</p>
     </div>
@@ -25,13 +25,22 @@
 <div class="actions"><button id="analizar" class="primary">Analizar siniestro</button><span id="estado" aria-live="polite"></span></div>
 </section>
 <section class="card location-card">
-  <div class="card-title-row"><div><h2>Ubicación de referencia <small>(opcional)</small></h2><p class="hint">Buscá una dirección, esquina o referencia concreta para que el croquis pueda apoyarse en la geometría real de las calles.</p></div></div>
+  <div class="card-title-row"><div><h2>Ubicación de referencia <small>(opcional)</small></h2><p class="hint">Para cruces complejos, podés marcar el punto exacto en el mapa y usar la forma real de las calles en el croquis.</p></div></div>
   <div class="location-row">
     <input id="ubicacionQuery" type="text" placeholder="Ej.: Callao y Ruta 8, Grand Bourg / San Martín 1540, Los Polvorines">
     <button id="buscarUbicacion" class="ghost">Buscar ubicación</button>
   </div>
+  <div class="map-picker-tools"><button id="abrirMapaPicker" class="primary small">Elegir punto en mapa</button></div>
   <div id="ubicacionSeleccionada" class="selected-location hidden"></div>
   <div id="ubicacionResultados" class="location-results hidden"></div>
+  <div id="mapaPickerPanel" class="map-picker-panel hidden">
+    <div class="map-picker-head"><div><strong>Marcá el lugar exacto</strong><div class="map-picker-help">Buscá solo la zona si hace falta, mové el mapa y hacé clic en el cruce. El sistema leerá las calles alrededor del punto.</div></div></div>
+    <div class="map-search-row"><input id="zonaMapaQuery" type="text" placeholder="Ej.: Grand Bourg, Buenos Aires"><button id="buscarZonaMapa" class="ghost small">Ir a zona</button></div>
+    <div id="mapaPicker" class="map-picker"></div>
+    <div id="mapaPickerStatus" class="map-status">Hacé clic sobre el punto exacto del siniestro.</div>
+    <div id="mapaCallesDetectadas" class="map-roads"></div>
+    <div class="map-actions"><button id="usarPuntoMapa" class="primary small" disabled>Usar este punto</button><button id="quitarPuntoMapa" class="ghost small hidden">Dejar de usarlo</button></div>
+  </div>
 </section>
 <section id="resultado" class="results hidden">
 <article class="card"><div class="card-title-row"><h2>Relato corregido</h2><button id="copiar" class="ghost small">Copiar</button></div><textarea id="relatoCorregido" class="auto-grow output-editable" rows="2"></textarea><p class="hint">Podés modificarlo antes de copiarlo.</p></article>
@@ -73,6 +82,6 @@
 <div id="canvasWrap"><svg id="croquisSvg" viewBox="0 0 1120 560" aria-label="Editor de croquis"></svg></div>
 </article>
 </section>
-<footer class="app-footer">STAR Gestiones y Servicios · Asistente de Siniestros v0.10.1</footer>
-</main><script src="/app.js"></script><script src="/v010.js"></script><script src="/v0101.js"></script>
+<footer class="app-footer">STAR Gestiones y Servicios · Asistente de Siniestros v0.10.2</footer>
+</main><script src="/app.js"></script><script src="/v010.js"></script><script src="/v0101.js"></script><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="/v0102.js"></script>
 </body></html>
