@@ -1,4 +1,4 @@
-// v0.10.3: selección visual optimizada + geometría local recortada alrededor del punto.
+// v0.10.4: selección visual optimizada + geometría local confiable alrededor del punto.
 (() => {
   const abrirBtn=document.getElementById('abrirMapaPicker');
   const panel=document.getElementById('mapaPickerPanel');
@@ -15,10 +15,10 @@
   const estado=document.getElementById('estado');
   if(!abrirBtn||!panel||!mapEl||!window.L) return;
 
-  const QUERY_RADIUS_M=60;
-  const DRAW_RADIUS_M=48;
-  const KEEP_DISTANCE_M=28;
-  const REQUEST_TIMEOUT_MS=4500;
+  const BBOX_RADIUS_M=70;
+  const DRAW_RADIUS_M=45;
+  const KEEP_DISTANCE_M=24;
+  const REQUEST_TIMEOUT_MS=5500;
 
   let map=null,marker=null,preview=null,active=null,requestSeq=0;
   window.STAR_MAP_GEOMETRY=null;
@@ -76,15 +76,63 @@
     return kept.length>=2?kept:[];
   }
 
-  async function fetchWithTimeout(url,ms){
+  async function fetchWithTimeout(url,ms,extra={}){
     const c=new AbortController();
     const timer=setTimeout(()=>c.abort(),ms);
-    try{return await fetch(url,{headers:{Accept:'application/json'},signal:c.signal})}
+    try{return await fetch(url,{...extra,signal:c.signal})}
     finally{clearTimeout(timer)}
   }
 
-  async function overpass(lat,lon){
-    const q=`[out:json][timeout:4];way(around:${QUERY_RADIUS_M},${lat},${lon})[highway];out tags geom qt;`;
+  function finalizeWays(rawWays,lat,lon){
+    const ways=rawWays
+      .filter(w=>Array.isArray(w.geometry)&&w.geometry.length>1)
+      .map(w=>({
+        id:w.id,
+        nombre:(w.nombre||'').trim()||'Calle sin nombre',
+        highway:w.highway||'road',
+        oneway:w.oneway||'',
+        distance:wayDistanceToPoint(w.geometry,lat,lon),
+        geometry:clipGeometry(w.geometry,lat,lon,DRAW_RADIUS_M)
+      }))
+      .filter(w=>w.geometry.length>=2&&w.distance<=KEEP_DISTANCE_M)
+      .sort((a,b)=>a.distance-b.distance);
+
+    const dedup=[],seen=new Set();
+    for(const w of ways){
+      const key=`${w.nombre.toLowerCase()}|${w.highway}`;
+      if(seen.has(key))continue;
+      seen.add(key);dedup.push(w);
+      if(dedup.length>=8)break;
+    }
+    return dedup;
+  }
+
+  async function osmMapGeometry(lat,lon){
+    const dLat=BBOX_RADIUS_M/110540;
+    const dLon=BBOX_RADIUS_M/(111320*Math.cos(lat*Math.PI/180));
+    const bbox=[lon-dLon,lat-dLat,lon+dLon,lat+dLat].join(',');
+    const url=`https://api.openstreetmap.org/api/0.6/map?bbox=${bbox}`;
+    const res=await fetchWithTimeout(url,REQUEST_TIMEOUT_MS,{headers:{Accept:'application/xml,text/xml'}});
+    if(!res.ok)throw new Error(`OSM API ${res.status}`);
+    const xmlText=await res.text();
+    const doc=new DOMParser().parseFromString(xmlText,'application/xml');
+    if(doc.querySelector('parsererror'))throw new Error('Respuesta cartográfica inválida');
+    const nodes=new Map();
+    doc.querySelectorAll('node').forEach(n=>nodes.set(n.getAttribute('id'),{lat:+n.getAttribute('lat'),lon:+n.getAttribute('lon')}));
+    const raw=[];
+    doc.querySelectorAll('way').forEach(w=>{
+      const tags={};
+      w.querySelectorAll(':scope > tag').forEach(t=>tags[t.getAttribute('k')]=t.getAttribute('v'));
+      if(!tags.highway)return;
+      const geometry=[...w.querySelectorAll(':scope > nd')].map(nd=>nodes.get(nd.getAttribute('ref'))).filter(Boolean);
+      if(geometry.length<2)return;
+      raw.push({id:w.getAttribute('id'),nombre:tags.name||tags.ref||'',highway:tags.highway,oneway:tags.oneway||'',geometry});
+    });
+    return finalizeWays(raw,lat,lon);
+  }
+
+  async function overpassFallback(lat,lon){
+    const q=`[out:json][timeout:5];way(around:65,${lat},${lon})[highway];out tags geom qt;`;
     const urls=[
       'https://overpass.kumi.systems/api/interpreter?data='+encodeURIComponent(q),
       'https://overpass-api.de/api/interpreter?data='+encodeURIComponent(q)
@@ -92,33 +140,28 @@
     let lastErr=null;
     for(const url of urls){
       try{
-        const res=await fetchWithTimeout(url,REQUEST_TIMEOUT_MS);
-        if(!res.ok)throw new Error('Servicio de geometría no disponible');
+        const res=await fetchWithTimeout(url,REQUEST_TIMEOUT_MS,{headers:{Accept:'application/json'}});
+        if(!res.ok)throw new Error('Servicio alternativo no disponible');
         const data=await res.json();
-        const ways=(data.elements||[])
-          .filter(w=>Array.isArray(w.geometry)&&w.geometry.length>1)
-          .map(w=>({
-            id:w.id,
-            nombre:(w.tags?.name||w.tags?.ref||'').trim()||'Calle sin nombre',
-            highway:w.tags?.highway||'road',
-            oneway:w.tags?.oneway||'',
-            distance:wayDistanceToPoint(w.geometry,lat,lon),
-            geometry:clipGeometry(w.geometry,lat,lon,DRAW_RADIUS_M)
-          }))
-          .filter(w=>w.geometry.length>=2&&w.distance<=KEEP_DISTANCE_M)
-          .sort((a,b)=>a.distance-b.distance);
-
-        const dedup=[],seen=new Set();
-        for(const w of ways){
-          const key=`${w.nombre.toLowerCase()}|${w.highway}`;
-          if(seen.has(key))continue;
-          seen.add(key);dedup.push(w);
-          if(dedup.length>=8)break;
-        }
-        return dedup;
+        const raw=(data.elements||[]).filter(w=>Array.isArray(w.geometry)).map(w=>({
+          id:w.id,
+          nombre:(w.tags?.name||w.tags?.ref||''),
+          highway:w.tags?.highway||'road',
+          oneway:w.tags?.oneway||'',
+          geometry:w.geometry.map(p=>({lat:+p.lat,lon:+p.lon}))
+        }));
+        return finalizeWays(raw,lat,lon);
       }catch(e){lastErr=e}
     }
     throw lastErr||new Error('No se pudo leer la geometría vial.');
+  }
+
+  async function loadRoadGeometry(lat,lon){
+    try{
+      const direct=await osmMapGeometry(lat,lon);
+      if(direct.length)return direct;
+    }catch{}
+    return await overpassFallback(lat,lon);
   }
 
   function uniqueNames(ways){
@@ -135,9 +178,9 @@
     if(marker)marker.setLatLng([lat,lon]);else marker=L.marker([lat,lon]).addTo(map);
     if(preview?.layer)preview.layer.remove();
     usarBtn.disabled=true;
-    setStatus('Leyendo solo las calles inmediatas al punto…');roadList.innerHTML='';
+    setStatus('Leyendo las calles inmediatas al punto…');roadList.innerHTML='';
     try{
-      const ways=await overpass(lat,lon);
+      const ways=await loadRoadGeometry(lat,lon);
       if(seq!==requestSeq)return;
       const names=uniqueNames(ways);
       preview={lat,lon,ways,names};
@@ -150,7 +193,7 @@
     }catch(e){
       if(seq!==requestSeq)return;
       preview={lat,lon,ways:[],names:[]};
-      setStatus('No pude leer las calles en unos segundos. Probá otra vez o mové apenas el punto.');
+      setStatus('No pude leer la geometría de ese punto. Probá una vez más o mové el marcador unos metros.');
       usarBtn.disabled=true;
     }
   }
@@ -160,7 +203,7 @@
     buscarZona.disabled=true;const old=buscarZona.textContent;buscarZona.textContent='Buscando…';
     try{
       const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=ar&accept-language=es&q='+encodeURIComponent(q);
-      const res=await fetchWithTimeout(url,3500);const arr=await res.json();
+      const res=await fetchWithTimeout(url,4000,{headers:{Accept:'application/json'}});const arr=await res.json();
       if(!arr.length)throw new Error('No encontré esa zona.');
       map.setView([+arr[0].lat,+arr[0].lon],17);setStatus('Zona encontrada. Ahora hacé clic en el punto exacto del cruce.');
     }catch(e){setStatus(e.message||'No se pudo buscar la zona.')}finally{buscarZona.disabled=false;buscarZona.textContent=old}
@@ -214,8 +257,8 @@
     const cx=430,cy=280,lat0=geo.lat*Math.PI/180;
     const local=[];
     geo.ways.forEach(w=>w.geometry.forEach(p=>local.push({x:(p.lon-geo.lon)*111320*Math.cos(lat0),y:(geo.lat-p.lat)*110540})));
-    const max=Math.max(18,...local.map(p=>Math.max(Math.abs(p.x),Math.abs(p.y))));
-    const scale=Math.min(5.4,Math.max(3.2,245/max));
+    const max=Math.max(16,...local.map(p=>Math.max(Math.abs(p.x),Math.abs(p.y))));
+    const scale=Math.min(6.2,Math.max(3.6,220/max));
     const drawnNames=new Set();
 
     geo.ways.forEach(w=>{
