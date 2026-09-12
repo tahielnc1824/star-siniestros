@@ -1,4 +1,4 @@
-// v0.10.2: selección visual del punto exacto y uso de geometría real de calles.
+// v0.10.3: selección visual optimizada; consulta rápida, cancelable y con fallback.
 (() => {
   const abrirBtn=document.getElementById('abrirMapaPicker');
   const panel=document.getElementById('mapaPickerPanel');
@@ -15,7 +15,8 @@
   const estado=document.getElementById('estado');
   if(!abrirBtn||!panel||!mapEl||!window.L) return;
 
-  let map=null,marker=null,preview=null,active=null;
+  let map=null,marker=null,preview=null,active=null,currentLoadId=0,currentAbort=[];
+  const geometryCache=new Map();
   window.STAR_MAP_GEOMETRY=null;
 
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -36,28 +37,67 @@
     return 18;
   }
 
+  function cancelCurrentLoads(){
+    currentAbort.forEach(c=>{try{c.abort()}catch{}});
+    currentAbort=[];
+  }
+
+  function cacheKey(lat,lon){return `${lat.toFixed(4)},${lon.toFixed(4)}`}
+
+  async function fetchWithTimeout(url,ms=4500){
+    const controller=new AbortController();
+    currentAbort.push(controller);
+    const timer=setTimeout(()=>controller.abort(),ms);
+    try{
+      const res=await fetch(url,{headers:{Accept:'application/json'},signal:controller.signal});
+      if(!res.ok)throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    }finally{clearTimeout(timer)}
+  }
+
+  function normalizeWays(data){
+    return (data.elements||[])
+      .filter(w=>Array.isArray(w.geometry)&&w.geometry.length>1)
+      .map(w=>({
+        id:w.id,
+        nombre:(w.tags?.name||w.tags?.ref||'').trim()||'Calle sin nombre',
+        highway:w.tags?.highway||'road',
+        oneway:w.tags?.oneway||'',
+        geometry:w.geometry.map(p=>({lat:+p.lat,lon:+p.lon}))
+      }));
+  }
+
   async function overpass(lat,lon){
-    const q=`[out:json][timeout:15];way(around:125,${lat},${lon})[highway];out tags geom;`;
+    const key=cacheKey(lat,lon);
+    if(geometryCache.has(key))return geometryCache.get(key);
+
+    // Radio más chico y sólo vías relevantes/nominadas cuando están disponibles.
+    const q=`[out:json][timeout:5];(way(around:75,${lat},${lon})[highway][name];way(around:75,${lat},${lon})[highway][ref];);out tags geom;`;
+    const enc=encodeURIComponent(q);
     const urls=[
-      'https://overpass-api.de/api/interpreter?data='+encodeURIComponent(q),
-      'https://overpass.kumi.systems/api/interpreter?data='+encodeURIComponent(q)
+      'https://overpass-api.de/api/interpreter?data='+enc,
+      'https://overpass.kumi.systems/api/interpreter?data='+enc
     ];
-    let lastErr=null;
-    for(const url of urls){
-      try{
-        const res=await fetch(url,{headers:{Accept:'application/json'}});
-        if(!res.ok)throw new Error('Servicio de geometría no disponible');
-        const data=await res.json();
-        return (data.elements||[]).filter(w=>Array.isArray(w.geometry)&&w.geometry.length>1).map(w=>({
-          id:w.id,
-          nombre:(w.tags?.name||w.tags?.ref||'').trim()||'Calle sin nombre',
-          highway:w.tags?.highway||'road',
-          oneway:w.tags?.oneway||'',
-          geometry:w.geometry.map(p=>({lat:+p.lat,lon:+p.lon}))
-        }));
-      }catch(e){lastErr=e}
+
+    // Consultamos dos mirrors en paralelo y usamos el primero que responda bien.
+    let data;
+    try{
+      data=await Promise.any(urls.map(u=>fetchWithTimeout(u,4500)));
+    }catch{
+      // Fallback más amplio, pero con límite corto. No dejamos la interfaz colgada.
+      const q2=`[out:json][timeout:4];way(around:60,${lat},${lon})[highway];out tags geom;`;
+      const enc2=encodeURIComponent(q2);
+      const fallbacks=[
+        'https://overpass-api.de/api/interpreter?data='+enc2,
+        'https://overpass.kumi.systems/api/interpreter?data='+enc2
+      ];
+      data=await Promise.any(fallbacks.map(u=>fetchWithTimeout(u,3500)));
     }
-    throw lastErr||new Error('No se pudo leer la geometría vial.');
+
+    const ways=normalizeWays(data);
+    geometryCache.set(key,ways);
+    if(geometryCache.size>24){const first=geometryCache.keys().next().value;geometryCache.delete(first)}
+    return ways;
   }
 
   function uniqueNames(ways){
@@ -70,25 +110,41 @@
   }
 
   async function selectPoint(lat,lon){
+    const loadId=++currentLoadId;
+    cancelCurrentLoads();
     if(marker)marker.setLatLng([lat,lon]);else marker=L.marker([lat,lon]).addTo(map);
     if(preview?.layer)preview.layer.remove();
-    usarBtn.disabled=true;
-    setStatus('Leyendo las calles alrededor del punto…');roadList.innerHTML='';
+
+    // Permitimos usar el punto enseguida; la geometría se completa apenas responde.
+    preview={lat,lon,ways:[],names:[],loading:true};
+    usarBtn.disabled=false;
+    usarBtn.textContent='Usar este punto';
+    setStatus('Punto marcado. Leyendo las calles… (máximo unos segundos)');
+    roadList.innerHTML='<span class="location-meta">Podés usar el punto ya mismo; si la geometría termina de cargar, se agregará automáticamente.</span>';
+
     try{
       const ways=await overpass(lat,lon);
+      if(loadId!==currentLoadId)return;
       const names=uniqueNames(ways);
-      preview={lat,lon,ways,names};
       const group=L.featureGroup();
       ways.forEach(w=>L.polyline(w.geometry.map(p=>[p.lat,p.lon]),{weight:Math.max(3,roadWidth(w.highway)/6),opacity:.65}).addTo(group));
-      group.addTo(map);preview.layer=group;
-      if(group.getLayers().length) map.fitBounds(group.getBounds().pad(.2),{maxZoom:18});
-      roadList.innerHTML=names.length?names.map(n=>`<span class="map-road-chip">${esc(n)}</span>`).join(''):'<span class="location-meta">No encontré nombres, pero sí se guardará la geometría.</span>';
-      setStatus(`Punto marcado. Detecté ${ways.length} tramos viales${names.length?` y ${names.length} nombres de calle`:''}.`);
-      usarBtn.disabled=ways.length===0;
+      group.addTo(map);
+      preview={lat,lon,ways,names,layer:group,loading:false};
+      roadList.innerHTML=names.length?names.map(n=>`<span class="map-road-chip">${esc(n)}</span>`).join(''):'<span class="location-meta">No encontré nombres claros, pero el punto quedó listo.</span>';
+      setStatus(ways.length?`Listo. Detecté ${ways.length} tramos viales${names.length?` y ${names.length} calles`:''}.`:'Punto listo. No encontré geometría suficiente, pero podés usarlo como referencia.');
+
+      // Si el usuario ya había activado ese punto, actualizamos la geometría sin pedir otro clic.
+      if(active&&Math.abs(active.lat-lat)<1e-7&&Math.abs(active.lon-lon)<1e-7){
+        active={lat,lon,ways,names};
+        window.STAR_MAP_GEOMETRY={active:true,...active};
+        setEstado(ways.length?'La geometría del mapa terminó de cargar y ya quedó actualizada.':'El punto sigue activo como referencia.');
+      }
     }catch(e){
-      preview={lat,lon,ways:[],names:[]};
-      setStatus('Marqué el punto, pero no pude leer las calles. Probá de nuevo o mové apenas el marcador.');
-      usarBtn.disabled=true;
+      if(loadId!==currentLoadId)return;
+      preview={lat,lon,ways:[],names:[],loading:false};
+      setStatus('Punto listo. El servicio de calles no respondió rápido, así que seguimos sin esperar.');
+      roadList.innerHTML='<span class="location-meta">Se usará la ubicación exacta. Podés volver a tocar el punto si querés reintentar la geometría.</span>';
+      usarBtn.disabled=false;
     }
   }
 
@@ -96,11 +152,13 @@
     const q=zonaInput.value.trim();if(!q)return;
     buscarZona.disabled=true;const old=buscarZona.textContent;buscarZona.textContent='Buscando…';
     try{
+      const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),5000);
       const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=ar&accept-language=es&q='+encodeURIComponent(q);
-      const res=await fetch(url,{headers:{Accept:'application/json'}});const arr=await res.json();
+      const res=await fetch(url,{headers:{Accept:'application/json'},signal:controller.signal});clearTimeout(timer);
+      const arr=await res.json();
       if(!arr.length)throw new Error('No encontré esa zona.');
       map.setView([+arr[0].lat,+arr[0].lon],16);setStatus('Zona encontrada. Ahora hacé clic en el punto exacto del cruce.');
-    }catch(e){setStatus(e.message||'No se pudo buscar la zona.')}finally{buscarZona.disabled=false;buscarZona.textContent=old}
+    }catch(e){setStatus(e.name==='AbortError'?'La búsqueda tardó demasiado. Probá con una zona más general.':(e.message||'No se pudo buscar la zona.'))}finally{buscarZona.disabled=false;buscarZona.textContent=old}
   }
 
   abrirBtn.addEventListener('click',()=>{
@@ -112,12 +170,12 @@
   zonaInput.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();searchZone()}});
 
   usarBtn.addEventListener('click',()=>{
-    if(!preview||!preview.ways.length)return;
-    active={lat:preview.lat,lon:preview.lon,ways:preview.ways,names:preview.names};
+    if(!preview)return;
+    active={lat:preview.lat,lon:preview.lon,ways:preview.ways||[],names:preview.names||[]};
     window.STAR_MAP_GEOMETRY={active:true,...active};
     document.getElementById('quitarUbicacion')?.click();
-    setStatus(`Geometría activada para el croquis${active.names.length?`: ${active.names.join(' · ')}`:''}.`);
-    setEstado('Punto del mapa listo. El próximo análisis usará la geometría real de esas calles.');
+    setStatus(active.ways.length?`Geometría activada${active.names.length?`: ${active.names.join(' · ')}`:''}.`:'Punto activado. Si termina de cargar la geometría, se incorporará sola.');
+    setEstado(active.ways.length?'Punto del mapa listo. El próximo análisis usará la geometría real de esas calles.':'Punto del mapa listo. No vamos a esperar al servicio de geometría.');
     usarBtn.textContent='Punto en uso';
     quitarBtn.classList.remove('hidden');
   });
@@ -130,11 +188,12 @@
     if(e.target!==analizarBtn||!active)return;
     const original=relatoInput.value;
     const names=active.names.join(', ');
-    const compact=active.ways.slice(0,12).map(w=>{
-      const pts=w.geometry.filter((_,i,a)=>i===0||i===a.length-1||i%Math.max(1,Math.floor(a.length/4))===0).slice(0,6);
+    const compact=(active.ways||[]).slice(0,10).map(w=>{
+      const pts=w.geometry.filter((_,i,a)=>i===0||i===a.length-1||i%Math.max(1,Math.floor(a.length/4))===0).slice(0,5);
       return `${w.nombre} [${w.highway}] trazado ${pts.map(p=>`${p.lat.toFixed(6)},${p.lon.toFixed(6)}`).join(' > ')}`;
     }).join('; ');
-    const ctx=`[[GEOMETRÍA REAL DEL MAPA PARA EL CROQUIS — NO REPETIR EN EL RELATO CORREGIDO]]\nPunto exacto elegido por el usuario: ${active.lat.toFixed(6)}, ${active.lon.toFixed(6)}. Vías detectadas: ${names||'sin nombres disponibles'}. Trazados reales cercanos: ${compact}. Usá esta geometría para decidir cuántas vías convergen y sus ángulos.\n[[FIN GEOMETRÍA REAL]]\n\n`;
+    const geoText=compact?` Vías detectadas: ${names||'sin nombres disponibles'}. Trazados reales cercanos: ${compact}. Usá esta geometría para decidir cuántas vías convergen y sus ángulos.`:' Usá este punto exacto como referencia espacial. Si el relato describe un cruce complejo, no fuerces una intersección en cruz si no está claro.';
+    const ctx=`[[GEOMETRÍA REAL DEL MAPA PARA EL CROQUIS — NO REPETIR EN EL RELATO CORREGIDO]]\nPunto exacto elegido por el usuario: ${active.lat.toFixed(6)}, ${active.lon.toFixed(6)}.${geoText}\n[[FIN GEOMETRÍA REAL]]\n\n`;
     relatoInput.value=ctx+original;
     setTimeout(()=>{relatoInput.value=original},0);
   },true);
@@ -184,6 +243,7 @@
   }
 
   limpiarBtn?.addEventListener('click',()=>{
+    currentLoadId++;cancelCurrentLoads();
     if(preview?.layer)preview.layer.remove();
     active=null;preview=null;window.STAR_MAP_GEOMETRY=null;usarBtn.textContent='Usar este punto';usarBtn.disabled=true;quitarBtn.classList.add('hidden');roadList.innerHTML='';if(marker){marker.remove();marker=null}
   });
