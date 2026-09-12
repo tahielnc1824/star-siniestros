@@ -71,7 +71,7 @@
 
   async function selectPoint(lat,lon){
     if(marker)marker.setLatLng([lat,lon]);else marker=L.marker([lat,lon]).addTo(map);
-    if(preview)preview.remove();
+    if(preview?.layer)preview.layer.remove();
     usarBtn.disabled=true;
     setStatus('Leyendo las calles alrededor del punto…');roadList.innerHTML='';
     try{
@@ -139,7 +139,6 @@
     setTimeout(()=>{relatoInput.value=original},0);
   },true);
 
-  // Sobrescribe únicamente la base vial: si hay un punto de mapa activo, dibuja sus trazados reales.
   if(typeof window.drawScenario==='function'){
     const oldDraw=window.drawScenario;
     window.drawScenario=function(c){
@@ -162,7 +161,7 @@
     const max=Math.max(45,...pts.map(p=>Math.max(Math.abs(p.x),Math.abs(p.y))));
     const scale=Math.min(3.1,Math.max(1.35,310/max));
     const drawnNames=new Set();
-    geo.ways.forEach((w,idx)=>{
+    geo.ways.forEach(w=>{
       const mapped=w.geometry.map(p=>({x:cx+(p.lon-geo.lon)*111320*Math.cos(lat0)*scale,y:cy+(geo.lat-p.lat)*110540*scale})).filter(p=>p.x>-120&&p.x<DRAW_W+120&&p.y>-120&&p.y<SVG_H+120);
       if(mapped.length<2)return;
       const d=mapped.map((p,i)=>(i?'L':'M')+` ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
@@ -185,6 +184,7 @@
   }
 
   limpiarBtn?.addEventListener('click',()=>{
-    active=null;preview=null;window.STAR_MAP_GEOMETRY=null;usarBtn.textContent='Usar este punto';usarBtn.disabled=true;quitarBtn.classList.add('hidden');roadList.innerHTML='';if(marker){marker.remove();marker=null}if(preview?.layer)preview.layer.remove();
+    if(preview?.layer)preview.layer.remove();
+    active=null;preview=null;window.STAR_MAP_GEOMETRY=null;usarBtn.textContent='Usar este punto';usarBtn.disabled=true;quitarBtn.classList.add('hidden');roadList.innerHTML='';if(marker){marker.remove();marker=null}
   });
 })();
