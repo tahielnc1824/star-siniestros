@@ -202,7 +202,7 @@ ALERTAS DE COBERTURA:
 - Categorías a revisar cuando aparezcan en el relato del cliente o sobre el vehículo asegurado: alcohol o drogas; negativa a controles; licencia inexistente, vencida, suspendida o categoría no habilitante; conductor no autorizado cuando la póliza lo limite; uso distinto del declarado; Uber/Cabify/Didi/remís/taxi/transporte oneroso de pasajeros sin que el perfil lo contemple; delivery o actividad comercial cuando el uso declarado sea particular; competencias, carreras, picadas o pruebas de velocidad; acto intencional/dolo; uso del vehículo para delito; transporte de personas en lugares no habilitados; exceso o acondicionamiento irregular de carga cuando sea relevante; remolque o arrastre fuera de una situación admitida; vehículo sin habilitación exigible para el uso declarado; circulación en situaciones expresamente incompatibles con el riesgo contratado; modificaciones relevantes no declaradas; y cualquier otra circunstancia que el texto presente como posible incumplimiento de una condición de póliza.
 - No uses una lista mecánica: explicá en lenguaje simple QUÉ frase disparó la alerta, POR QUÉ conviene revisar y QUÉ debe confirmar el productor.
 - Si el perfil indica uso particular y el relato menciona plataforma, remís, taxi, transporte pago, delivery o uso comercial, la alerta debe ser al menos "revisar_poliza" y explicar la discrepancia de uso.
-- Si el perfil ya contempla transporte de pasajeros/comercial, no marques el mero uso como problema; solo alertá si aparece otra circunstancia sensible.
+- Si el perfil ya contempla transporte de pasajeros o uso comercial, no marques el mero uso como problema; solo alertá si aparece otra circunstancia sensible.
 - Si no hay ninguna circunstancia relevante, devolvé alertas_cobertura=[].
 
 DAÑOS:
@@ -346,4 +346,4 @@ ${JSON.stringify(escena,null,2)}`;
   }
   if(req.method==='GET')return serveStatic(req,res); res.writeHead(405);res.end('Method not allowed');
 });
-server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.11.1: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
+server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.11.2: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
