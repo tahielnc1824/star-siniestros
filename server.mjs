@@ -306,6 +306,12 @@ function serveStatic(req,res){
 }
 
 const server=http.createServer(async(req,res)=>{
+  if(req.method==='GET'&&req.url==='/health'){
+    return sendJson(res,200,{ok:true,version:'0.11.3',time:new Date().toISOString()});
+  }
+  if(req.method==='GET'&&(req.url==='/'||req.url==='/index.html')){
+    console.log('[HTTP]',req.method,req.url,new Date().toISOString());
+  }
   if(req.method==='POST'&&req.url==='/api/corregir-croquis'){
     try{
       let body=''; for await(const chunk of req){body+=chunk;if(body.length>150_000)throw new Error('Solicitud demasiado grande');}
@@ -346,4 +352,7 @@ ${JSON.stringify(escena,null,2)}`;
   }
   if(req.method==='GET')return serveStatic(req,res); res.writeHead(405);res.end('Method not allowed');
 });
-server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.11.2: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
+server.keepAliveTimeout=65_000;
+server.headersTimeout=66_000;
+server.requestTimeout=120_000;
+server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.11.3: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
