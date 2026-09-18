@@ -1,0 +1,18 @@
+/* v0.11: perfil de póliza y alertas de cobertura */
+.policy-profile{margin-top:14px;border:1px solid #d7e6ef;border-radius:12px;background:#f9fcfe}
+.policy-profile summary{cursor:pointer;padding:12px 14px;font-weight:800;color:#17324a}
+.policy-profile-body{padding:0 14px 14px}
+.policy-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.policy-grid label{display:flex;flex-direction:column;gap:6px;font-weight:700;color:#294a63}
+.policy-grid select,.policy-grid input{width:100%;border:1px solid #bfd5e3;border-radius:10px;padding:10px 12px;font:inherit;background:#fff;color:#17324a}
+.coverage-card{border-left:5px solid #e0a42f}
+.coverage-alert{border:1px solid #d9e4eb;border-radius:12px;padding:12px 14px;margin-top:10px;background:#fff}
+.coverage-alert.alta{border-color:#e5a4a4;background:#fff7f7}
+.coverage-alert.revisar_poliza{border-color:#e7c46d;background:#fffaf0}
+.coverage-alert.informativa{border-color:#b9d6e7;background:#f6fbfe}
+.coverage-alert-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:6px}
+.coverage-alert-head span{font-size:12px;font-weight:700;color:#627b8e;background:#eef5f8;border-radius:999px;padding:3px 8px}
+.coverage-quote{font-size:13px;color:#536b7b;margin:5px 0}
+.coverage-reason{color:#17324a;line-height:1.45}
+.coverage-check{margin-top:7px;font-size:13px;color:#36576e}
+@media(max-width:720px){.policy-grid{grid-template-columns:1fr}.coverage-alert-head{align-items:flex-start;flex-direction:column}}
