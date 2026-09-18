@@ -40,6 +40,20 @@ const schema = {
         }, required: ['tipo', 'texto']
       }
     },
+    alertas_cobertura: {
+      type: 'array',
+      items: {
+        type: 'object', additionalProperties: false,
+        properties: {
+          nivel: { type: 'string', enum: ['alta','revisar_poliza','informativa'] },
+          categoria: { type: 'string' },
+          frase_detectada: { type: 'string' },
+          motivo: { type: 'string' },
+          verificar: { type: 'string' }
+        },
+        required: ['nivel','categoria','frase_detectada','motivo','verificar']
+      }
+    },
     croquis: {
       type: 'object', additionalProperties: false,
       properties: {
@@ -149,7 +163,7 @@ const schema = {
         }
       }, required: ['escenario','descripcion_breve','calles','vehiculos','impactos','trayectorias','elementos','objetos','semaforos','nivel_confianza','layout']
     }
-  }, required: ['relato_corregido','observaciones','croquis']
+  }, required: ['relato_corregido','observaciones','alertas_cobertura','croquis']
 };
 
 const instructions = `
@@ -172,6 +186,24 @@ OBSERVACIONES:
 - No repitas la misma idea en dos observaciones.
 - Si el relato ya identifica la esquina o cruce entre dos vías, no digas que falta la intersección.
 - Si del relato se entiende que un vehículo seguía por su vía y el otro ingresaba o cruzaba, no lo marques como maniobra dudosa.
+
+
+ALERTAS DE COBERTURA:
+- Este análisis es preventivo para un Productor Asesor de Seguros. Nunca afirmes de manera definitiva que un siniestro está cubierto o excluido solo por el relato.
+- NO modifiques, suavices, ocultes ni reescribas hechos del relato para evitar una posible exclusión. El relato corregido debe conservar lo declarado.
+- Si detectás un hecho que podría afectar cobertura, generá una alerta para que el productor revise la póliza y hable con el cliente antes de denunciar.
+- Solo generá alertas por hechos expresamente declarados o razonablemente inequívocos. No inventes alcohol, uso comercial, falta de licencia ni ninguna otra circunstancia.
+- Diferenciá quién realizó la conducta. Una conducta del TERCERO (por ejemplo alcoholizado o cruzando en rojo) no implica por sí misma un problema de cobertura de la póliza del cliente. En ese caso no la presentes como exclusión del asegurado.
+- Infracciones de tránsito como cruzar en rojo, exceso de velocidad o prioridad de paso NO equivalen automáticamente a falta de cobertura. Solo pueden ser una alerta informativa o de revisión cuando haya una razón contractual concreta; nunca digas "sin cobertura" por la infracción sola.
+- El perfil de póliza es orientativo. Si falta, analizá de forma conservadora y pedí verificar uso/cobertura cuando corresponda.
+- Usá nivel "alta" cuando el relato del asegurado/conductor del vehículo asegurado contiene un dato típicamente sensible que amerita detenerse antes de cargar la denuncia.
+- Usá "revisar_poliza" cuando depende especialmente del uso declarado, tipo de cobertura, cláusulas particulares o identificación de quién conducía.
+- Usá "informativa" solo para un dato que conviene tener presente pero que no sugiere por sí mismo una exclusión.
+- Categorías a revisar cuando aparezcan en el relato del cliente o sobre el vehículo asegurado: alcohol o drogas; negativa a controles; licencia inexistente, vencida, suspendida o categoría no habilitante; conductor no autorizado cuando la póliza lo limite; uso distinto del declarado; Uber/Cabify/Didi/remís/taxi/transporte oneroso de pasajeros sin que el perfil lo contemple; delivery o actividad comercial cuando el uso declarado sea particular; competencias, carreras, picadas o pruebas de velocidad; acto intencional/dolo; uso del vehículo para delito; transporte de personas en lugares no habilitados; exceso o acondicionamiento irregular de carga cuando sea relevante; remolque o arrastre fuera de una situación admitida; vehículo sin habilitación exigible para el uso declarado; circulación en situaciones expresamente incompatibles con el riesgo contratado; modificaciones relevantes no declaradas; y cualquier otra circunstancia que el texto presente como posible incumplimiento de una condición de póliza.
+- No uses una lista mecánica: explicá en lenguaje simple QUÉ frase disparó la alerta, POR QUÉ conviene revisar y QUÉ debe confirmar el productor.
+- Si el perfil indica uso particular y el relato menciona plataforma, remís, taxi, transporte pago, delivery o uso comercial, la alerta debe ser al menos "revisar_poliza" y explicar la discrepancia de uso.
+- Si el perfil ya contempla transporte de pasajeros/comercial, no marques el mero uso como problema; solo alertá si aparece otra circunstancia sensible.
+- Si no hay ninguna circunstancia relevante, devolvé alertas_cobertura=[].
 
 DAÑOS:
 - Usalos como evidencia auxiliar para interpretar y contrastar la mecánica.
@@ -299,11 +331,13 @@ ${JSON.stringify(escena,null,2)}`;
   if(req.method==='POST'&&req.url==='/api/analizar'){
     try{
       let body=''; for await(const chunk of req){body+=chunk;if(body.length>100_000)throw new Error('Solicitud demasiado grande');}
-      const data=JSON.parse(body||'{}'); const relato=String(data.relato||'').trim(); const danos=String(data.danos||'').trim();
+      const data=JSON.parse(body||'{}'); const relato=String(data.relato||'').trim(); const danos=String(data.danos||'').trim(); const croquisAyuda=String(data.croquisAyuda||'').trim(); const perfilPoliza=data.perfilPoliza||{};
       if(!relato)return sendJson(res,400,{error:'Ingresá un relato del siniestro.'});
       if(!process.env.OPENAI_API_KEY)return sendJson(res,500,{error:'Falta configurar OPENAI_API_KEY en el archivo .env.'});
-      const input=`RELATO ORIGINAL:\n${relato}\n\nDAÑOS DECLARADOS:\n${danos||'No informados.'}`;
-      const apiRes=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model:MODEL,store:false,reasoning:{effort:'low'},instructions,input,text:{format:{type:'json_schema',name:'analisis_siniestro_v09',strict:true,schema}}})});
+      const perfilTexto=`Uso declarado: ${perfilPoliza.uso||'sin_especificar'}${perfilPoliza.otro_uso?` (${perfilPoliza.otro_uso})`:''}. Tipo de cobertura: ${perfilPoliza.cobertura||'sin_especificar'}.`;
+      const ayudaTexto=croquisAyuda?`\n\nACLARACIÓN OPCIONAL PARA EL CROQUIS (NO COPIAR AL RELATO CORREGIDO):\n${croquisAyuda}`:'';
+      const input=`RELATO ORIGINAL:\n${relato}\n\nDAÑOS DECLARADOS:\n${danos||'No informados.'}\n\nPERFIL DE PÓLIZA (ORIENTATIVO):\n${perfilTexto}${ayudaTexto}`;
+      const apiRes=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model:MODEL,store:false,reasoning:{effort:'low'},instructions,input,text:{format:{type:'json_schema',name:'analisis_siniestro_v011',strict:true,schema}}})});
       const apiJson=await apiRes.json(); if(!apiRes.ok){console.error(apiJson);return sendJson(res,apiRes.status,{error:apiJson?.error?.message||'Error al consultar la IA.'});}
       let outputText=apiJson.output_text; if(!outputText&&Array.isArray(apiJson.output)){for(const item of apiJson.output){if(item.type==='message'&&Array.isArray(item.content)){const t=item.content.find(c=>c.type==='output_text');if(t?.text){outputText=t.text;break;}}}}
       if(!outputText)return sendJson(res,502,{error:'La IA no devolvió un resultado interpretable.'});
@@ -312,4 +346,4 @@ ${JSON.stringify(escena,null,2)}`;
   }
   if(req.method==='GET')return serveStatic(req,res); res.writeHead(405);res.end('Method not allowed');
 });
-server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.9: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
+server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.11: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
