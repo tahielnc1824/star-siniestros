@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Asistente de Siniestros</title><link rel="icon" type="image/png" href="/favicon.png"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/v010.css">
+<title>Asistente de Siniestros</title><link rel="icon" type="image/png" href="/favicon.png"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/v010.css"><link rel="stylesheet" href="/v011.css">
 </head>
 <body>
 <main class="wrap">
@@ -10,7 +10,7 @@
   <div class="brand-main">
     <img class="brand-logo" src="/logo-star.png" alt="STAR Gestiones y Servicios">
     <div class="brand-copy">
-      <div class="eyebrow">Herramienta interna · v0.10.8</div>
+      <div class="eyebrow">Herramienta interna · v0.11</div>
       <h1 id="appTitle">Asistente de Siniestros</h1>
       <p>Ingresá el relato y, si corresponde, los daños. Nada queda guardado.</p>
     </div>
@@ -25,11 +25,41 @@
 <label for="croquisAyuda">Aclaración del cruce <small>(opcional)</small></label>
 <textarea id="croquisAyuda" class="auto-grow" rows="2" placeholder="Solo si el cruce es difícil de explicar. Ej.: El Callao sigue recto; Beiró entra desde la izquierda y Grand Bourg desde la derecha, formando tres ramas."></textarea>
 <p class="hint">Usalo solamente cuando la forma de las calles sea rara. Esta aclaración ayuda al croquis pero no se agrega al relato corregido.</p>
+<details class="policy-profile">
+  <summary>Perfil de la póliza <small>(opcional)</small></summary>
+  <div class="policy-profile-body">
+    <p class="hint">Sirve para hacer más precisas las alertas de cobertura. Si no lo completás, el análisis igual funciona de forma conservadora.</p>
+    <div class="policy-grid">
+      <label>Uso declarado
+        <select id="perfilUso">
+          <option value="sin_especificar">Sin especificar</option>
+          <option value="particular">Particular</option>
+          <option value="comercial">Comercial</option>
+          <option value="transporte_pasajeros">Transporte de pasajeros</option>
+          <option value="remis_taxi">Remís / Taxi</option>
+          <option value="otro">Otro</option>
+        </select>
+      </label>
+      <label>Tipo de cobertura
+        <select id="perfilCobertura">
+          <option value="sin_especificar">Sin especificar</option>
+          <option value="rc">Responsabilidad Civil</option>
+          <option value="terceros">Terceros</option>
+          <option value="terceros_completo">Terceros completo</option>
+          <option value="todo_riesgo">Todo riesgo</option>
+          <option value="otro">Otro</option>
+        </select>
+      </label>
+    </div>
+    <input id="perfilUsoOtro" class="hidden" type="text" placeholder="Describí brevemente el uso declarado">
+  </div>
+</details>
 <div class="actions"><button id="analizar" class="primary">Analizar siniestro</button><span id="estado" aria-live="polite"></span></div>
 </section>
 <section id="resultado" class="results hidden">
 <article class="card"><div class="card-title-row"><h2>Relato corregido</h2><button id="copiar" class="ghost small">Copiar</button></div><textarea id="relatoCorregido" class="auto-grow output-editable" rows="2"></textarea><p class="hint">Podés modificarlo antes de copiarlo.</p></article>
 <article class="card"><h2>Observaciones</h2><div id="observaciones"></div></article>
+<article class="card coverage-card"><h2>Alertas de cobertura</h2><p class="hint">Son avisos preventivos para revisar con el cliente y la póliza antes de denunciar. No significan un rechazo automático ni modifican el relato.</p><div id="alertasCobertura"></div></article>
 <article class="card details-card">
   <details id="croquisDetails">
     <summary><div><h2>Interpretación para el croquis</h2><p id="confianza" class="hint">Confianza general: —</p></div><span class="summary-action">Desplegar</span></summary>
@@ -57,6 +87,6 @@
 <div id="canvasWrap"><svg id="croquisSvg" viewBox="0 0 1120 560" aria-label="Editor de croquis"></svg></div>
 </article>
 </section>
-<footer class="app-footer">STAR Gestiones y Servicios · Asistente de Siniestros v0.10.8</footer>
-</main><script src="/app.js"></script><script src="/v010.js"></script><script src="/v0108.js"></script>
+<footer class="app-footer">STAR Gestiones y Servicios · Asistente de Siniestros v0.11</footer>
+</main><script src="/app.js"></script><script src="/v010.js"></script><script src="/v011.js"></script>
 </body></html>
