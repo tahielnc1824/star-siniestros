@@ -1,11 +1,10 @@
-// v0.11: perfil opcional de póliza + alertas de posible cobertura. Mantiene la validación geométrica sin alterar el relato.
+// v0.11.1: perfil opcional de uso + alertas de posible cobertura. Mantiene la validación geométrica sin alterar el relato.
 (() => {
   const relatoEl=document.getElementById('relato');
   const danosEl=document.getElementById('danos');
   const ayudaEl=document.getElementById('croquisAyuda');
   const usoEl=document.getElementById('perfilUso');
-  const coberturaEl=document.getElementById('perfilCobertura');
-  const otroUsoEl=document.getElementById('perfilUsoOtro');
+    const otroUsoEl=document.getElementById('perfilUsoOtro');
   const alertasEl=document.getElementById('alertasCobertura');
   const limpiar=document.getElementById('limpiar');
   if(!relatoEl) return;
@@ -24,7 +23,6 @@
         payload.croquisAyuda=(ayudaEl?.value||'').trim();
         payload.perfilPoliza={
           uso: usoEl?.value||'sin_especificar',
-          cobertura: coberturaEl?.value||'sin_especificar',
           otro_uso:(otroUsoEl?.value||'').trim()
         };
         init={...init,body:JSON.stringify(payload)};
@@ -142,7 +140,6 @@
   limpiar?.addEventListener('click',()=>{
     if(ayudaEl) ayudaEl.value='';
     if(usoEl) usoEl.value='sin_especificar';
-    if(coberturaEl) coberturaEl.value='sin_especificar';
     if(otroUsoEl){otroUsoEl.value='';otroUsoEl.classList.add('hidden');}
     if(alertasEl) alertasEl.innerHTML='';
   });
