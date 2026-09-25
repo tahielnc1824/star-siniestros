@@ -408,7 +408,7 @@ function serveStatic(req,res){
 
 const server=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&req.url==='/health'){
-    return sendJson(res,200,{ok:true,version:'0.12',time:new Date().toISOString()});
+    return sendJson(res,200,{ok:true,version:'0.12.1',time:new Date().toISOString()});
   }
   if(req.method==='GET'&&(req.url==='/'||req.url==='/index.html')){
     console.log('[HTTP]',req.method,req.url,new Date().toISOString());
@@ -465,17 +465,41 @@ ${JSON.stringify(escena,null,2)}`;
       if(!fileData)return sendJson(res,400,{error:'Falta adjuntar la póliza en PDF.'});
       if(!process.env.OPENAI_API_KEY)return sendJson(res,500,{error:'Falta configurar OPENAI_API_KEY.'});
       const claimText=`TIPO DE SINIESTRO: ${tipoSiniestro}${subtipoSiniestro?` / ${subtipoSiniestro}`:''}\nRELATO: ${relato}\nDAÑOS / ELEMENTOS AFECTADOS: ${danos||'No informados.'}\n\nAnalizá si la póliza adjunta contiene coberturas, límites, franquicias, condiciones o exclusiones relevantes para este hecho.`;
-      const input=[{role:'user',content:[
-        {type:'input_text',text:claimText},
-        {type:'input_file',filename,file_data:fileData}
-      ]}];
-      const apiRes=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model:MODEL,store:false,reasoning:{effort:'low'},instructions:policyInstructions,input,text:{format:{type:'json_schema',name:'analisis_poliza_v012',strict:true,schema:policySchema}}})});
-      const apiJson=await apiRes.json();
-      if(!apiRes.ok){console.error(apiJson);return sendJson(res,apiRes.status,{error:apiJson?.error?.message||'Error al analizar la póliza.'});}
-      let outputText=apiJson.output_text;
-      if(!outputText&&Array.isArray(apiJson.output)){for(const item of apiJson.output){if(item.type==='message'&&Array.isArray(item.content)){const t=item.content.find(c=>c.type==='output_text');if(t?.text){outputText=t.text;break;}}}}
-      if(!outputText)return sendJson(res,502,{error:'La IA no devolvió un análisis interpretable de la póliza.'});
-      return sendJson(res,200,JSON.parse(outputText));
+
+      const pdfBuffer=Buffer.from(fileData,'base64');
+      if(!pdfBuffer.length)return sendJson(res,400,{error:'No se pudo leer el PDF adjunto.'});
+
+      const form=new FormData();
+      form.append('purpose','user_data');
+      form.append('file',new Blob([pdfBuffer],{type:'application/pdf'}),filename);
+
+      const uploadRes=await fetch('https://api.openai.com/v1/files',{
+        method:'POST',
+        headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`},
+        body:form
+      });
+      const uploadJson=await uploadRes.json();
+      if(!uploadRes.ok||!uploadJson?.id){
+        console.error(uploadJson);
+        return sendJson(res,uploadRes.status||502,{error:uploadJson?.error?.message||'No se pudo cargar la póliza para analizarla.'});
+      }
+
+      const fileId=uploadJson.id;
+      try{
+        const input=[{role:'user',content:[
+          {type:'input_text',text:claimText},
+          {type:'input_file',file_id:fileId}
+        ]}];
+        const apiRes=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model:MODEL,store:false,reasoning:{effort:'low'},instructions:policyInstructions,input,text:{format:{type:'json_schema',name:'analisis_poliza_v0121',strict:true,schema:policySchema}}})});
+        const apiJson=await apiRes.json();
+        if(!apiRes.ok){console.error(apiJson);return sendJson(res,apiRes.status,{error:apiJson?.error?.message||'Error al analizar la póliza.'});}
+        let outputText=apiJson.output_text;
+        if(!outputText&&Array.isArray(apiJson.output)){for(const item of apiJson.output){if(item.type==='message'&&Array.isArray(item.content)){const t=item.content.find(c=>c.type==='output_text');if(t?.text){outputText=t.text;break;}}}}
+        if(!outputText)return sendJson(res,502,{error:'La IA no devolvió un análisis interpretable de la póliza.'});
+        return sendJson(res,200,JSON.parse(outputText));
+      } finally {
+        fetch(`https://api.openai.com/v1/files/${fileId}`,{method:'DELETE',headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`}}).catch(()=>{});
+      }
     }catch(err){console.error(err);return sendJson(res,500,{error:err.message||'Error interno.'});}
   }
   if(req.method==='GET')return serveStatic(req,res); res.writeHead(405);res.end('Method not allowed');
@@ -483,4 +507,4 @@ ${JSON.stringify(escena,null,2)}`;
 server.keepAliveTimeout=65_000;
 server.headersTimeout=66_000;
 server.requestTimeout=120_000;
-server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.12: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
+server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.12.1: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
