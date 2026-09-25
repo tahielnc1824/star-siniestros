@@ -202,24 +202,17 @@ const generalSchema = {
 const policySchema = {
   type:'object', additionalProperties:false,
   properties:{
-    conclusion:{type:'string'},
-    resumen_poliza:{type:'string'},
-    hallazgos:{
+    estado:{type:'string',enum:['cubierto','no_cubierto','revisar']},
+    resumen:{type:'string'},
+    motivo:{type:'string'},
+    condiciones:{
       type:'array',
-      items:{
-        type:'object', additionalProperties:false,
-        properties:{
-          titulo:{type:'string'},
-          estado:{type:'string',enum:['cubierto','condicionado','revisar','no_encontrado']},
-          explicacion:{type:'string'},
-          referencia:{type:'string'}
-        },
-        required:['titulo','estado','explicacion','referencia']
-      }
+      maxItems:3,
+      items:{type:'string'}
     },
-    aclaracion:{type:'string'}
+    referencia:{type:'string'}
   },
-  required:['conclusion','resumen_poliza','hallazgos','aclaracion']
+  required:['estado','resumen','motivo','condiciones','referencia']
 };
 
 const generalInstructions = `
@@ -252,20 +245,34 @@ ALERTAS PREVENTIVAS DE COBERTURA:
 `;
 
 const policyInstructions = `
-Sos un asistente para un Productor Asesor de Seguros en Argentina. Vas a comparar un siniestro ya relatado con una póliza PDF adjunta.
+Sos un asistente para un Productor Asesor de Seguros en Argentina. Comparás un siniestro concreto con una póliza PDF adjunta.
+
+OBJETIVO:
+- Respondé de forma MUY SIMPLE si el hecho relatado está cubierto, no está cubierto o requiere revisión.
+- No hagas un inventario de toda la póliza.
+- No analices coberturas que no tienen relación directa con el siniestro.
+- No agregues secciones sobre Responsabilidad Civil, suma asegurada, franquicia u otros puntos si no son relevantes para este hecho.
+
+RESULTADO:
+- "cubierto": la póliza muestra claramente que la cobertura aplicable está contratada.
+- "no_cubierto": la póliza muestra claramente que esa cobertura no está contratada o que una exclusión expresa aplica al hecho.
+- "revisar": el PDF es incompleto, ambiguo o no permite concluir con seguridad.
+
+CONTENIDO:
+- "resumen": una frase corta, por ejemplo "La rueda robada está cubierta" o "La póliza no incluye robo parcial".
+- "motivo": una explicación breve, idealmente 1 o 2 oraciones.
+- "condiciones": solo datos que cambien cuánto o cómo indemniza el siniestro. Máximo 3. Ejemplos: franquicia, límite, porcentaje, depreciación/desgaste de neumáticos o ruedas, antigüedad, tope por pieza, documentación o condición expresa.
+- Si no hay ninguna condición relevante, devolvé condiciones=[].
+- "referencia": indicá brevemente la cobertura, cláusula, sección o página que sustenta la respuesta. Si no puede identificarse con precisión, decilo.
 
 REGLAS:
-- Basate únicamente en el contenido visible de la póliza y en el relato proporcionado.
-- No inventes coberturas, exclusiones, sumas, franquicias ni cláusulas.
-- Diferenciá condiciones generales, particulares, anexos, límites, franquicias, exclusiones y uso declarado cuando estén presentes.
-- Una coincidencia aparente no equivale a una decisión definitiva de la aseguradora.
-- Si la póliza no permite concluir algo con claridad, usá "revisar" o "no_encontrado".
-- Usá "cubierto" solo cuando la póliza muestre de manera clara que la cobertura aplicable está contratada y no haya en el relato una condición evidente que exija revisión.
-- Usá "condicionado" cuando exista cobertura pero dependa de franquicia, límite, condición, documentación o circunstancia relevante.
-- "no_encontrado" significa que no encontraste esa cobertura en el PDF; no afirmes automáticamente que está excluida.
-- En "referencia", indicá la sección, cláusula, encabezado o página si puede identificarse. Si no, decí "No identificada con precisión".
-- La conclusión debe ser breve y prudente.
+- Basate únicamente en la póliza adjunta y en el relato.
+- No inventes coberturas, exclusiones, límites, franquicias ni porcentajes.
+- Si una compañía descuenta desgaste, depreciación o aplica una regla especial para ruedas/neumáticos y eso aparece en la póliza, destacalo en "condiciones".
+- La ausencia de una cobertura en un frente incompleto no alcanza para afirmar "no_cubierto": en ese caso usá "revisar".
+- No modifiques ni suavices el relato para intentar obtener cobertura.
 `;
+
 
 const instructions = `
 Sos un asistente interno para una oficina de seguros de Argentina. Ayudás a preparar relatos de denuncias de siniestros viales y la información necesaria para un croquis.
@@ -408,7 +415,7 @@ function serveStatic(req,res){
 
 const server=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&req.url==='/health'){
-    return sendJson(res,200,{ok:true,version:'0.12.1',time:new Date().toISOString()});
+    return sendJson(res,200,{ok:true,version:'0.12.2',time:new Date().toISOString()});
   }
   if(req.method==='GET'&&(req.url==='/'||req.url==='/index.html')){
     console.log('[HTTP]',req.method,req.url,new Date().toISOString());
@@ -490,7 +497,7 @@ ${JSON.stringify(escena,null,2)}`;
           {type:'input_text',text:claimText},
           {type:'input_file',file_id:fileId}
         ]}];
-        const apiRes=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model:MODEL,store:false,reasoning:{effort:'low'},instructions:policyInstructions,input,text:{format:{type:'json_schema',name:'analisis_poliza_v0121',strict:true,schema:policySchema}}})});
+        const apiRes=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model:MODEL,store:false,reasoning:{effort:'low'},instructions:policyInstructions,input,text:{format:{type:'json_schema',name:'analisis_poliza_v0122',strict:true,schema:policySchema}}})});
         const apiJson=await apiRes.json();
         if(!apiRes.ok){console.error(apiJson);return sendJson(res,apiRes.status,{error:apiJson?.error?.message||'Error al analizar la póliza.'});}
         let outputText=apiJson.output_text;
@@ -507,4 +514,4 @@ ${JSON.stringify(escena,null,2)}`;
 server.keepAliveTimeout=65_000;
 server.headersTimeout=66_000;
 server.requestTimeout=120_000;
-server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.12.1: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
+server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.12.2: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
