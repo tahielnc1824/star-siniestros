@@ -9,6 +9,7 @@
   const alertasEl=$('alertasCobertura');
 
   if(!tipo||!form) return;
+  let lastData=null;
 
   const defs={
     choque:{label:'Choque / accidente',placeholder:'Ej.: Circulaba por calle Belgrano y al llegar a la esquina...',danos:'Ej.: guardabarros delantero derecho, paragolpes delantero...'},
@@ -106,7 +107,7 @@
       })});
       const data=await res.json();
       if(!res.ok) throw new Error(data.error||'No se pudo analizar.');
-      window.ultimoResultado=data;
+      lastData=data;
       if(tipo.value==='choque'){
         croquisInterpretacion?.classList.remove('hidden');
         croquisEditor?.classList.remove('hidden');
@@ -116,6 +117,8 @@
     }catch(e){estado.textContent=e.message}
     finally{btn.disabled=false;btn.textContent='Analizar siniestro'}
   });
+
+  $('generarCroquis')?.addEventListener('click',()=>{if(lastData?.croquis&&typeof window.generateSketch==='function')window.generateSketch(lastData.croquis)});
 
   function fileToBase64(file){
     return new Promise((resolve,reject)=>{
@@ -164,5 +167,6 @@
     if(polizaPdf)polizaPdf.value='';
     resultadoPoliza?.classList.add('hidden');
     estadoPoliza.textContent='';
+    lastData=null;
   });
 })();
