@@ -33,3 +33,37 @@
 .policy-conditions ul{margin:6px 0 0 18px;padding:0}
 .policy-conditions li{margin:3px 0}
 .policy-status.no_cubierto{background:#f8eceb}
+
+/* v0.12.3 - estados de procesamiento */
+button.is-loading{position:relative;pointer-events:none;opacity:.88}
+button.is-loading::before{
+  content:"";
+  display:inline-block;
+  width:14px;
+  height:14px;
+  margin-right:8px;
+  vertical-align:-2px;
+  border:2px solid currentColor;
+  border-right-color:transparent;
+  border-radius:50%;
+  animation:starSpin .75s linear infinite
+}
+.processing-status{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+}
+.processing-status::before{
+  content:"";
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:currentColor;
+  opacity:.55;
+  animation:starPulse 1s ease-in-out infinite
+}
+@keyframes starSpin{to{transform:rotate(360deg)}}
+@keyframes starPulse{0%,100%{transform:scale(.75);opacity:.35}50%{transform:scale(1.15);opacity:.85}}
+@media (prefers-reduced-motion:reduce){
+  button.is-loading::before,.processing-status::before{animation:none}
+}
