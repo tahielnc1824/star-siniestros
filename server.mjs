@@ -241,6 +241,20 @@ ALERTAS PREVENTIVAS DE COBERTURA:
 - Alertá solo por circunstancias expresamente declaradas que razonablemente ameriten revisar la póliza.
 - El uso declarado del vehículo es orientativo.
 - Si no hay una circunstancia relevante, devolvé alertas_cobertura=[].
+- Tratá como ALERTA FUERTE (nivel "alta") cuando el hecho involucre al asegurado o conductor del vehículo asegurado y el relato declare de forma expresa alguno de estos supuestos sensibles que suelen aparecer en exclusiones o cláusulas de culpa grave de automotores:
+  1) alcohol o drogas, o negativa a realizar el control;
+  2) licencia inexistente, suspendida, vencida o categoría no habilitante;
+  3) circulación en contramano con señalización inequívoca;
+  4) exceso de velocidad superior al 40% del límite máximo permitido, únicamente si el relato aporta datos suficientes para calcularlo;
+  5) cruce ferroviario con barrera baja o señal que impedía el paso;
+  6) carreras, picadas, competencias o pruebas de velocidad;
+  7) remolque o arrastre fuera de una ayuda ocasional o situación admitida;
+  8) exceso de carga o carga irregular cuando resulte relevante al hecho;
+  9) uso distinto al declarado, incluyendo transporte oneroso de pasajeros o actividad comercial no contemplada;
+  10) acto intencional, dolo o una conducta expresamente descripta como deliberada para provocar el daño.
+- En estas alertas NO digas "sin cobertura" solo por el relato. Escribí que la circunstancia puede afectar la cobertura y que debe revisarse la póliza/cláusula aplicable.
+- No conviertas infracciones comunes en exclusiones: semáforo en rojo, prioridad de paso o una velocidad no cuantificada NO son por sí solos una alerta fuerte.
+- Si la conducta corresponde al tercero y no al asegurado/conductor asegurado, no la presentes como exclusión de la póliza del cliente.
 - Redactá las alertas en lenguaje simple para un Productor Asesor de Seguros.
 `;
 
@@ -311,6 +325,20 @@ ALERTAS DE COBERTURA:
 - No uses una lista mecánica: explicá en lenguaje simple QUÉ frase disparó la alerta, POR QUÉ conviene revisar y QUÉ debe confirmar el productor.
 - Si el perfil indica uso particular y el relato menciona plataforma, remís, taxi, transporte pago, delivery o uso comercial, la alerta debe ser al menos "revisar_poliza" y explicar la discrepancia de uso.
 - Si el perfil ya contempla transporte de pasajeros o uso comercial, no marques el mero uso como problema; solo alertá si aparece otra circunstancia sensible.
+- Tratá como ALERTA FUERTE (nivel "alta") cuando el hecho involucre al asegurado o conductor del vehículo asegurado y el relato declare de forma expresa alguno de estos supuestos sensibles que suelen aparecer en exclusiones o cláusulas de culpa grave de automotores:
+  1) alcohol o drogas, o negativa a realizar el control;
+  2) licencia inexistente, suspendida, vencida o categoría no habilitante;
+  3) circulación en contramano con señalización inequívoca;
+  4) exceso de velocidad superior al 40% del límite máximo permitido, únicamente si el relato aporta datos suficientes para calcularlo;
+  5) cruce ferroviario con barrera baja o señal que impedía el paso;
+  6) carreras, picadas, competencias o pruebas de velocidad;
+  7) remolque o arrastre fuera de una ayuda ocasional o situación admitida;
+  8) exceso de carga o carga irregular cuando resulte relevante al hecho;
+  9) uso distinto al declarado, incluyendo transporte oneroso de pasajeros o actividad comercial no contemplada;
+  10) acto intencional, dolo o una conducta expresamente descripta como deliberada para provocar el daño.
+- En estas alertas NO digas "sin cobertura" solo por el relato. Escribí que la circunstancia puede afectar la cobertura y que debe revisarse la póliza/cláusula aplicable.
+- No conviertas infracciones comunes en exclusiones: semáforo en rojo, prioridad de paso o una velocidad no cuantificada NO son por sí solos una alerta fuerte.
+- Si la conducta corresponde al tercero y no al asegurado/conductor asegurado, no la presentes como exclusión de la póliza del cliente.
 - Si no hay ninguna circunstancia relevante, devolvé alertas_cobertura=[].
 
 DAÑOS:
@@ -415,7 +443,7 @@ function serveStatic(req,res){
 
 const server=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&req.url==='/health'){
-    return sendJson(res,200,{ok:true,version:'0.12.2',time:new Date().toISOString()});
+    return sendJson(res,200,{ok:true,version:'0.12.4',time:new Date().toISOString()});
   }
   if(req.method==='GET'&&(req.url==='/'||req.url==='/index.html')){
     console.log('[HTTP]',req.method,req.url,new Date().toISOString());
@@ -450,7 +478,7 @@ ${JSON.stringify(escena,null,2)}`;
       if(!process.env.OPENAI_API_KEY)return sendJson(res,500,{error:'Falta configurar OPENAI_API_KEY en el archivo .env.'});
       const perfilTexto=`Uso declarado: ${perfilPoliza.uso||'sin_especificar'}${perfilPoliza.otro_uso?` (${perfilPoliza.otro_uso})`:''}.`;
       const ayudaTexto=croquisAyuda?`\n\nACLARACIÓN OPCIONAL PARA EL CROQUIS (NO COPIAR AL RELATO CORREGIDO):\n${croquisAyuda}`:'';
-      const input=`TIPO DE SINIESTRO: ${tipoSiniestro}${subtipoSiniestro?` / ${subtipoSiniestro}`:''}\n\nRELATO ORIGINAL:\n${relato}\n\nDAÑOS / ELEMENTOS AFECTADOS:\n${danos||'No informados.'}\n\nUSO DECLARADO (ORIENTATIVO):\n${perfilTexto}${tipoSiniestro==='choque'?ayudaTexto:''}`; const responseSchema=tipoSiniestro==='choque'?schema:generalSchema; const responseInstructions=tipoSiniestro==='choque'?instructions:generalInstructions; const schemaName=tipoSiniestro==='choque'?'analisis_siniestro_v012_vial':'analisis_siniestro_v012_general';
+      const input=`TIPO DE SINIESTRO: ${tipoSiniestro}${subtipoSiniestro?` / ${subtipoSiniestro}`:''}\n\nRELATO ORIGINAL:\n${relato}\n\nDAÑOS / ELEMENTOS AFECTADOS:\n${danos||'No informados.'}\n\nUSO DECLARADO (ORIENTATIVO):\n${perfilTexto}${tipoSiniestro==='choque'?ayudaTexto:''}`; const responseSchema=tipoSiniestro==='choque'?schema:generalSchema; const responseInstructions=tipoSiniestro==='choque'?instructions:generalInstructions; const schemaName=tipoSiniestro==='choque'?'analisis_siniestro_v0124_vial':'analisis_siniestro_v0124_general';
       const apiRes=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model:MODEL,store:false,reasoning:{effort:'low'},instructions:responseInstructions,input,text:{format:{type:'json_schema',name:schemaName,strict:true,schema:responseSchema}}})});
       const apiJson=await apiRes.json(); if(!apiRes.ok){console.error(apiJson);return sendJson(res,apiRes.status,{error:apiJson?.error?.message||'Error al consultar la IA.'});}
       let outputText=apiJson.output_text; if(!outputText&&Array.isArray(apiJson.output)){for(const item of apiJson.output){if(item.type==='message'&&Array.isArray(item.content)){const t=item.content.find(c=>c.type==='output_text');if(t?.text){outputText=t.text;break;}}}}
@@ -514,4 +542,4 @@ ${JSON.stringify(escena,null,2)}`;
 server.keepAliveTimeout=65_000;
 server.headersTimeout=66_000;
 server.requestTimeout=120_000;
-server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.12.2: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
+server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.12.4: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
