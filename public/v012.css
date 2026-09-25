@@ -24,3 +24,12 @@
 .policy-status.condicionado{background:#fff4d8}
 .policy-disclaimer{margin-top:12px}
 @media(max-width:680px){.siniestro-start{padding:20px}.policy-finding>div{display:block}.policy-status{display:inline-block;margin-top:6px}}
+
+.policy-simple-result{margin-top:12px;padding-top:12px;border-top:1px solid #e5ebef}
+.policy-simple-head{display:flex;gap:12px;justify-content:space-between;align-items:flex-start}
+.policy-simple-head strong{font-size:1rem}
+.policy-simple-result p{margin:8px 0}
+.policy-conditions{margin-top:8px}
+.policy-conditions ul{margin:6px 0 0 18px;padding:0}
+.policy-conditions li{margin:3px 0}
+.policy-status.no_cubierto{background:#f8eceb}
