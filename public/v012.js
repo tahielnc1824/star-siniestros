@@ -1,4 +1,4 @@
-// v0.12.2: selector progresivo de tipo de siniestro + análisis opcional de póliza.
+// v0.12.3: selector progresivo de tipo de siniestro + análisis opcional de póliza.
 (() => {
   const $ = id => document.getElementById(id);
   const tipo=$('tipoSiniestro'), form=$('formSiniestro'), subtipoWrap=$('subtipoWrap'), subtipo=$('subtipoSiniestro');
@@ -23,6 +23,22 @@
 
   function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function autoGrow(el){if(!el)return;el.style.height='auto';el.style.height=Math.min(el.scrollHeight,330)+'px';}
+  function setLoading(button,on,label,statusEl,statusText){
+    if(!button)return;
+    if(on){
+      if(!button.dataset.loadingOriginal)button.dataset.loadingOriginal=button.textContent;
+      button.disabled=true;
+      button.classList.add('is-loading');
+      button.textContent=label||'Procesando…';
+      if(statusEl&&statusText){statusEl.textContent=statusText;statusEl.classList.add('processing-status');}
+    }else{
+      button.disabled=false;
+      button.classList.remove('is-loading');
+      button.textContent=button.dataset.loadingOriginal||button.textContent;
+      delete button.dataset.loadingOriginal;
+      statusEl?.classList.remove('processing-status');
+    }
+  }
 
   function syncType(){
     const cfg=defs[tipo.value];
@@ -100,7 +116,7 @@
   btn.addEventListener('click',async()=>{
     if(!tipo.value){tipo.focus();return}
     if(!relato.value.trim()){relato.focus();estado.textContent='Ingresá un relato.';return}
-    btn.disabled=true;btn.textContent='Analizando…';estado.textContent='Interpretando el siniestro…';
+    setLoading(btn,true,tipo.value==='choque'?'Analizando y generando croquis…':'Analizando siniestro…',estado,tipo.value==='choque'?'Analizando el relato y preparando el croquis…':'Analizando el siniestro…');
     try{
       const res=await fetch('/api/analizar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         relato:relato.value,
@@ -119,10 +135,18 @@
       }else renderGeneral(data);
       estado.textContent='Análisis listo.';
     }catch(e){estado.textContent=e.message}
-    finally{btn.disabled=false;btn.textContent='Analizar siniestro'}
+    finally{setLoading(btn,false,'',estado,'')}
   });
 
-  $('generarCroquis')?.addEventListener('click',()=>{if(lastData?.croquis&&typeof window.generateSketch==='function')window.generateSketch(lastData.croquis)});
+  $('generarCroquis')?.addEventListener('click',()=>{
+    const b=$('generarCroquis');
+    if(!lastData?.croquis||typeof window.generateSketch!=='function')return;
+    setLoading(b,true,'Generando croquis…',estado,'Generando el croquis…');
+    setTimeout(()=>{
+      try{window.generateSketch(lastData.croquis);estado.textContent='Croquis generado.';}
+      finally{setLoading(b,false,'',estado,'');}
+    },350);
+  });
 
   function fileToBase64(file){
     return new Promise((resolve,reject)=>{
@@ -138,7 +162,7 @@
     if(!file){estadoPoliza.textContent='Seleccioná una póliza en PDF.';return}
     if(file.type && file.type!=='application/pdf'){estadoPoliza.textContent='El archivo debe ser PDF.';return}
     if(file.size>10*1024*1024){estadoPoliza.textContent='El PDF es demasiado grande. Máximo 10 MB.';return}
-    analizarPoliza.disabled=true;analizarPoliza.textContent='Analizando…';estadoPoliza.textContent='Leyendo la póliza y comparando la cobertura…';
+    setLoading(analizarPoliza,true,'Analizando póliza…',estadoPoliza,'Leyendo la póliza y comparando la cobertura…');
     try{
       const base64=await fileToBase64(file);
       const res=await fetch('/api/analizar-poliza',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
@@ -163,7 +187,7 @@
       resultadoPoliza.classList.remove('hidden');
       estadoPoliza.textContent='';
     }catch(e){estadoPoliza.textContent=e.message}
-    finally{analizarPoliza.disabled=false;analizarPoliza.textContent='Analizar póliza'}
+    finally{setLoading(analizarPoliza,false,'',estadoPoliza,'')}
   });
 
   limpiar?.addEventListener('click',()=>{
