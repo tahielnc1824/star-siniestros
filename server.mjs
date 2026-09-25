@@ -166,6 +166,107 @@ const schema = {
   }, required: ['relato_corregido','observaciones','alertas_cobertura','croquis']
 };
 
+const generalSchema = {
+  type:'object', additionalProperties:false,
+  properties:{
+    relato_corregido:{type:'string'},
+    observaciones:{
+      type:'array',
+      items:{
+        type:'object', additionalProperties:false,
+        properties:{
+          tipo:{type:'string',enum:['falta_dato','revisar','tener_en_cuenta']},
+          texto:{type:'string'}
+        },
+        required:['tipo','texto']
+      }
+    },
+    alertas_cobertura:{
+      type:'array',
+      items:{
+        type:'object', additionalProperties:false,
+        properties:{
+          nivel:{type:'string',enum:['alta','revisar_poliza','informativa']},
+          categoria:{type:'string'},
+          frase_detectada:{type:'string'},
+          motivo:{type:'string'},
+          verificar:{type:'string'}
+        },
+        required:['nivel','categoria','frase_detectada','motivo','verificar']
+      }
+    }
+  },
+  required:['relato_corregido','observaciones','alertas_cobertura']
+};
+
+const policySchema = {
+  type:'object', additionalProperties:false,
+  properties:{
+    conclusion:{type:'string'},
+    resumen_poliza:{type:'string'},
+    hallazgos:{
+      type:'array',
+      items:{
+        type:'object', additionalProperties:false,
+        properties:{
+          titulo:{type:'string'},
+          estado:{type:'string',enum:['cubierto','condicionado','revisar','no_encontrado']},
+          explicacion:{type:'string'},
+          referencia:{type:'string'}
+        },
+        required:['titulo','estado','explicacion','referencia']
+      }
+    },
+    aclaracion:{type:'string'}
+  },
+  required:['conclusion','resumen_poliza','hallazgos','aclaracion']
+};
+
+const generalInstructions = `
+Sos un asistente interno para una oficina de seguros de Argentina. Analizás distintos tipos de siniestros de automotores: robo, incendio, daños climáticos, cristales/cerraduras, daños parciales/vandalismo y otros.
+
+REDACTÁ EL RELATO:
+- Breve, claro, cronológico, objetivo y apto para una denuncia.
+- Conservá todos los hechos declarados.
+- Corregí redacción sin inventar, completar ni alterar hechos.
+- No atribuyas culpabilidad ni hagas afirmaciones jurídicas.
+
+OBSERVACIONES:
+- Máximo 3 salvo que exista un problema claro.
+- "falta_dato": solo cuando falta un dato realmente útil para comprender o tramitar el siniestro.
+- "revisar": contradicción, ambigüedad relevante o algo que conviene confirmar.
+- "tener_en_cuenta": dato concreto y útil.
+- Adaptá lo que revisás al TIPO DE SINIESTRO informado. No pidas datos propios de un choque cuando se trata de robo, incendio, clima, cristales o vandalismo.
+- Para robo, prestá atención a si es total/parcial, bienes sustraídos, daños asociados y circunstancias relevantes expresamente informadas.
+- Para incendio, distinguí total/parcial si fue informado, alcance de daños y circunstancias conocidas sin inventar el origen.
+- Para daños climáticos, identificá el fenómeno y los daños vinculados.
+- Para cristales/cerraduras y vandalismo, identificá con precisión el elemento afectado.
+
+ALERTAS PREVENTIVAS DE COBERTURA:
+- Sin una póliza adjunta, nunca afirmes de manera definitiva que algo está cubierto o excluido.
+- No modifiques el relato para intentar obtener cobertura.
+- Alertá solo por circunstancias expresamente declaradas que razonablemente ameriten revisar la póliza.
+- El uso declarado del vehículo es orientativo.
+- Si no hay una circunstancia relevante, devolvé alertas_cobertura=[].
+- Redactá las alertas en lenguaje simple para un Productor Asesor de Seguros.
+`;
+
+const policyInstructions = `
+Sos un asistente para un Productor Asesor de Seguros en Argentina. Vas a comparar un siniestro ya relatado con una póliza PDF adjunta.
+
+REGLAS:
+- Basate únicamente en el contenido visible de la póliza y en el relato proporcionado.
+- No inventes coberturas, exclusiones, sumas, franquicias ni cláusulas.
+- Diferenciá condiciones generales, particulares, anexos, límites, franquicias, exclusiones y uso declarado cuando estén presentes.
+- Una coincidencia aparente no equivale a una decisión definitiva de la aseguradora.
+- Si la póliza no permite concluir algo con claridad, usá "revisar" o "no_encontrado".
+- Usá "cubierto" solo cuando la póliza muestre de manera clara que la cobertura aplicable está contratada y no haya en el relato una condición evidente que exija revisión.
+- Usá "condicionado" cuando exista cobertura pero dependa de franquicia, límite, condición, documentación o circunstancia relevante.
+- "no_encontrado" significa que no encontraste esa cobertura en el PDF; no afirmes automáticamente que está excluida.
+- En "referencia", indicá la sección, cláusula, encabezado o página si puede identificarse. Si no, decí "No identificada con precisión".
+- La conclusión debe ser breve y prudente.
+`;
+
 const instructions = `
 Sos un asistente interno para una oficina de seguros de Argentina. Ayudás a preparar relatos de denuncias de siniestros viales y la información necesaria para un croquis.
 
@@ -307,7 +408,7 @@ function serveStatic(req,res){
 
 const server=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&req.url==='/health'){
-    return sendJson(res,200,{ok:true,version:'0.11.3',time:new Date().toISOString()});
+    return sendJson(res,200,{ok:true,version:'0.12',time:new Date().toISOString()});
   }
   if(req.method==='GET'&&(req.url==='/'||req.url==='/index.html')){
     console.log('[HTTP]',req.method,req.url,new Date().toISOString());
@@ -337,16 +438,43 @@ ${JSON.stringify(escena,null,2)}`;
   if(req.method==='POST'&&req.url==='/api/analizar'){
     try{
       let body=''; for await(const chunk of req){body+=chunk;if(body.length>100_000)throw new Error('Solicitud demasiado grande');}
-      const data=JSON.parse(body||'{}'); const relato=String(data.relato||'').trim(); const danos=String(data.danos||'').trim(); const croquisAyuda=String(data.croquisAyuda||'').trim(); const perfilPoliza=data.perfilPoliza||{};
+      const data=JSON.parse(body||'{}'); const relato=String(data.relato||'').trim(); const danos=String(data.danos||'').trim(); const croquisAyuda=String(data.croquisAyuda||'').trim(); const perfilPoliza=data.perfilPoliza||{}; const tipoSiniestro=String(data.tipoSiniestro||'choque').trim()||'choque'; const subtipoSiniestro=String(data.subtipoSiniestro||'').trim();
       if(!relato)return sendJson(res,400,{error:'Ingresá un relato del siniestro.'});
       if(!process.env.OPENAI_API_KEY)return sendJson(res,500,{error:'Falta configurar OPENAI_API_KEY en el archivo .env.'});
       const perfilTexto=`Uso declarado: ${perfilPoliza.uso||'sin_especificar'}${perfilPoliza.otro_uso?` (${perfilPoliza.otro_uso})`:''}.`;
       const ayudaTexto=croquisAyuda?`\n\nACLARACIÓN OPCIONAL PARA EL CROQUIS (NO COPIAR AL RELATO CORREGIDO):\n${croquisAyuda}`:'';
-      const input=`RELATO ORIGINAL:\n${relato}\n\nDAÑOS DECLARADOS:\n${danos||'No informados.'}\n\nPERFIL DE PÓLIZA (ORIENTATIVO):\n${perfilTexto}${ayudaTexto}`;
-      const apiRes=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model:MODEL,store:false,reasoning:{effort:'low'},instructions,input,text:{format:{type:'json_schema',name:'analisis_siniestro_v011',strict:true,schema}}})});
+      const input=`TIPO DE SINIESTRO: ${tipoSiniestro}${subtipoSiniestro?` / ${subtipoSiniestro}`:''}\n\nRELATO ORIGINAL:\n${relato}\n\nDAÑOS / ELEMENTOS AFECTADOS:\n${danos||'No informados.'}\n\nUSO DECLARADO (ORIENTATIVO):\n${perfilTexto}${tipoSiniestro==='choque'?ayudaTexto:''}`; const responseSchema=tipoSiniestro==='choque'?schema:generalSchema; const responseInstructions=tipoSiniestro==='choque'?instructions:generalInstructions; const schemaName=tipoSiniestro==='choque'?'analisis_siniestro_v012_vial':'analisis_siniestro_v012_general';
+      const apiRes=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model:MODEL,store:false,reasoning:{effort:'low'},instructions:responseInstructions,input,text:{format:{type:'json_schema',name:schemaName,strict:true,schema:responseSchema}}})});
       const apiJson=await apiRes.json(); if(!apiRes.ok){console.error(apiJson);return sendJson(res,apiRes.status,{error:apiJson?.error?.message||'Error al consultar la IA.'});}
       let outputText=apiJson.output_text; if(!outputText&&Array.isArray(apiJson.output)){for(const item of apiJson.output){if(item.type==='message'&&Array.isArray(item.content)){const t=item.content.find(c=>c.type==='output_text');if(t?.text){outputText=t.text;break;}}}}
       if(!outputText)return sendJson(res,502,{error:'La IA no devolvió un resultado interpretable.'});
+      return sendJson(res,200,JSON.parse(outputText));
+    }catch(err){console.error(err);return sendJson(res,500,{error:err.message||'Error interno.'});}
+  }
+  if(req.method==='POST'&&req.url==='/api/analizar-poliza'){
+    try{
+      let body=''; for await(const chunk of req){body+=chunk;if(body.length>15_000_000)throw new Error('La póliza es demasiado grande.');}
+      const data=JSON.parse(body||'{}');
+      const relato=String(data.relato||'').trim();
+      const danos=String(data.danos||'').trim();
+      const tipoSiniestro=String(data.tipoSiniestro||'otro').trim();
+      const subtipoSiniestro=String(data.subtipoSiniestro||'').trim();
+      const filename=String(data.filename||'poliza.pdf').replace(/[^a-zA-Z0-9._ -]/g,'_');
+      const fileData=String(data.fileData||'').trim();
+      if(!relato)return sendJson(res,400,{error:'Falta el relato del siniestro.'});
+      if(!fileData)return sendJson(res,400,{error:'Falta adjuntar la póliza en PDF.'});
+      if(!process.env.OPENAI_API_KEY)return sendJson(res,500,{error:'Falta configurar OPENAI_API_KEY.'});
+      const claimText=`TIPO DE SINIESTRO: ${tipoSiniestro}${subtipoSiniestro?` / ${subtipoSiniestro}`:''}\nRELATO: ${relato}\nDAÑOS / ELEMENTOS AFECTADOS: ${danos||'No informados.'}\n\nAnalizá si la póliza adjunta contiene coberturas, límites, franquicias, condiciones o exclusiones relevantes para este hecho.`;
+      const input=[{role:'user',content:[
+        {type:'input_text',text:claimText},
+        {type:'input_file',filename,file_data:fileData}
+      ]}];
+      const apiRes=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model:MODEL,store:false,reasoning:{effort:'low'},instructions:policyInstructions,input,text:{format:{type:'json_schema',name:'analisis_poliza_v012',strict:true,schema:policySchema}}})});
+      const apiJson=await apiRes.json();
+      if(!apiRes.ok){console.error(apiJson);return sendJson(res,apiRes.status,{error:apiJson?.error?.message||'Error al analizar la póliza.'});}
+      let outputText=apiJson.output_text;
+      if(!outputText&&Array.isArray(apiJson.output)){for(const item of apiJson.output){if(item.type==='message'&&Array.isArray(item.content)){const t=item.content.find(c=>c.type==='output_text');if(t?.text){outputText=t.text;break;}}}}
+      if(!outputText)return sendJson(res,502,{error:'La IA no devolvió un análisis interpretable de la póliza.'});
       return sendJson(res,200,JSON.parse(outputText));
     }catch(err){console.error(err);return sendJson(res,500,{error:err.message||'Error interno.'});}
   }
@@ -355,4 +483,4 @@ ${JSON.stringify(escena,null,2)}`;
 server.keepAliveTimeout=65_000;
 server.headersTimeout=66_000;
 server.requestTimeout=120_000;
-server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.11.3: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
+server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.12: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
