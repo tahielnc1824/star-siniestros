@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Asistente de Siniestros</title><link rel="icon" type="image/png" href="/favicon.png"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/v010.css"><link rel="stylesheet" href="/v011.css">
+<link rel="stylesheet" href="/v012.css">
 </head>
 <body>
 <main class="wrap">
@@ -10,52 +11,88 @@
   <div class="brand-main">
     <img class="brand-logo" src="/logo-star.png" alt="STAR Gestiones y Servicios">
     <div class="brand-copy">
-      <div class="eyebrow">Herramienta interna · v0.11.3</div>
+      <div class="eyebrow">Herramienta interna · v0.12</div>
       <h1 id="appTitle">Asistente de Siniestros</h1>
       <p>Ingresá el relato y, si corresponde, los daños. Nada queda guardado.</p>
     </div>
   </div>
   <button id="limpiar" class="ghost">Limpiar</button>
 </header>
-<section class="card input-card">
-<label for="relato">Relato original <span>*</span></label>
-<textarea id="relato" class="auto-grow" rows="3" placeholder="Ej.: Circulaba por calle Belgrano y al llegar a la esquina..."></textarea>
-<label for="danos">Daños declarados <small>(opcional)</small></label>
-<textarea id="danos" class="auto-grow" rows="2" placeholder="Ej.: guardabarros delantero derecho, paragolpes delantero..."></textarea>
-<label for="croquisAyuda">Aclaración del cruce <small>(opcional)</small></label>
-<textarea id="croquisAyuda" class="auto-grow" rows="2" placeholder="Solo si el cruce es difícil de explicar. Ej.: El Callao sigue recto; Beiró entra desde la izquierda y Grand Bourg desde la derecha, formando tres ramas."></textarea>
-<p class="hint">Usalo solamente cuando la forma de las calles sea rara. Esta aclaración ayuda al croquis pero no se agrega al relato corregido.</p>
-<details class="policy-profile">
-  <summary>Perfil de la póliza <small>(opcional)</small></summary>
-  <div class="policy-profile-body">
-    <p class="hint">Sirve para hacer más precisas las alertas de cobertura. Si no lo completás, el análisis igual funciona de forma conservadora.</p>
-    <div class="policy-grid">
-      <label>Uso declarado
-        <select id="perfilUso">
-          <option value="sin_especificar">Sin especificar</option>
-          <option value="particular">Particular</option>
-          <option value="comercial">Comercial</option>
-          <option value="transporte_pasajeros">Transporte de pasajeros</option>
-          <option value="otro">Otro</option>
-        </select>
-      </label>
-    </div>
-    <input id="perfilUsoOtro" class="hidden" type="text" placeholder="Describí brevemente el uso declarado">
+<section class="card siniestro-start">
+  <label for="tipoSiniestro" class="main-question">¿Qué tipo de siniestro querés analizar?</label>
+  <select id="tipoSiniestro" class="type-select">
+    <option value="">Seleccionar...</option>
+    <option value="choque">Choque / accidente</option>
+    <option value="robo">Robo</option>
+    <option value="incendio">Incendio</option>
+    <option value="climatico">Daños climáticos</option>
+    <option value="cristales">Cristales / cerraduras</option>
+    <option value="vandalismo">Daños parciales / vandalismo</option>
+    <option value="otro">Otro</option>
+  </select>
+  <p class="hint start-hint">Elegí el tipo para mostrar solamente los datos necesarios para ese caso.</p>
+</section>
+
+<section id="formSiniestro" class="card input-card hidden">
+  <div id="subtipoWrap" class="hidden">
+    <label for="subtipoSiniestro">Tipo específico <small>(opcional)</small></label>
+    <select id="subtipoSiniestro"></select>
   </div>
-</details>
-<div class="actions"><button id="analizar" class="primary">Analizar siniestro</button><span id="estado" aria-live="polite"></span></div>
+
+  <label for="relato">Relato original <span>*</span></label>
+  <textarea id="relato" class="auto-grow" rows="3" placeholder="Contá brevemente qué ocurrió..."></textarea>
+
+  <label for="danos">Daños / elementos afectados <small>(opcional)</small></label>
+  <textarea id="danos" class="auto-grow" rows="2" placeholder="Indicá los daños o bienes afectados, si corresponde."></textarea>
+
+  <div id="camposChoque">
+    <label for="croquisAyuda">Aclaración del cruce <small>(opcional)</small></label>
+    <textarea id="croquisAyuda" class="auto-grow" rows="2" placeholder="Solo si la forma de las calles es difícil de explicar."></textarea>
+    <p class="hint">Esta aclaración ayuda al croquis pero no se agrega al relato corregido.</p>
+  </div>
+
+  <details class="policy-profile">
+    <summary>Uso del vehículo <small>(opcional)</small></summary>
+    <div class="policy-profile-body">
+      <p class="hint">Puede ayudar a detectar datos que conviene revisar antes de denunciar.</p>
+      <div class="policy-grid">
+        <label>Uso declarado
+          <select id="perfilUso">
+            <option value="sin_especificar">Sin especificar</option>
+            <option value="particular">Particular</option>
+            <option value="comercial">Comercial</option>
+            <option value="transporte_pasajeros">Transporte de pasajeros</option>
+            <option value="otro">Otro</option>
+          </select>
+        </label>
+      </div>
+      <input id="perfilUsoOtro" class="hidden" type="text" placeholder="Describí brevemente el uso declarado">
+    </div>
+  </details>
+
+  <div class="actions"><button id="analizar" class="primary">Analizar siniestro</button><span id="estado" aria-live="polite"></span></div>
 </section>
 <section id="resultado" class="results hidden">
 <article class="card"><div class="card-title-row"><h2>Relato corregido</h2><button id="copiar" class="ghost small">Copiar</button></div><textarea id="relatoCorregido" class="auto-grow output-editable" rows="2"></textarea><p class="hint">Podés modificarlo antes de copiarlo.</p></article>
 <article class="card"><h2>Observaciones</h2><div id="observaciones"></div></article>
 <article class="card coverage-card"><h2>Alertas de cobertura</h2><p class="hint">Son avisos preventivos para revisar con el cliente y la póliza antes de denunciar. No significan un rechazo automático ni modifican el relato.</p><div id="alertasCobertura"></div></article>
-<article class="card details-card">
+<article id="analisisPolizaCard" class="card policy-check-card">
+  <h2>¿Tenés dudas sobre la cobertura?</h2>
+  <p class="hint">Si querés, adjuntá la póliza y la IA la compara con lo denunciado. Es opcional y no modifica el relato.</p>
+  <div class="policy-upload-row">
+    <input id="polizaPdf" type="file" accept="application/pdf,.pdf">
+    <button id="analizarPoliza" class="ghost">Analizar póliza</button>
+  </div>
+  <div id="estadoPoliza" class="hint"></div>
+  <div id="resultadoPoliza" class="hidden"></div>
+</article>
+<article id="croquisInterpretacionCard" class="card details-card">
   <details id="croquisDetails">
     <summary><div><h2>Interpretación para el croquis</h2><p id="confianza" class="hint">Confianza general: —</p></div><span class="summary-action">Desplegar</span></summary>
     <div class="details-content"><div id="croquisResumen" class="summary-grid"></div><div class="technical-row"><button id="verJson" class="ghost small">Ver datos técnicos</button></div><pre id="json" class="json hidden"></pre></div>
   </details>
 </article>
-<article class="card editor-card">
+<article id="croquisEditorCard" class="card editor-card">
 <div class="card-title-row"><div><h2>Croquis</h2><p class="hint">La IA arma una base aproximada. Después podés acomodarla libremente.</p></div><button id="generarCroquis" class="primary small">Generar / rehacer croquis</button></div>
 <div class="editor-toolbar">
 <button data-tool="select" class="tool active">Seleccionar</button><button id="addCar" class="tool">+ Vehículo</button><button id="addArrow" class="tool">+ Flecha</button><button id="addImpact" class="tool">+ Impacto</button><button id="addTraffic" class="tool">+ Semáforo</button><button id="addObject" class="tool">+ Objeto</button><button id="addPothole" class="tool">+ Bache</button><button id="addTrajectory" class="tool">+ Trayectoria</button><button id="addText" class="tool">+ Texto</button><button id="deleteSelected" class="tool danger">Borrar</button><button id="undo" class="tool">Deshacer</button><button id="corregirIA" class="tool ai-tool">Corregir croquis con IA</button><button id="download" class="tool">Descargar PNG</button>
@@ -76,6 +113,7 @@
 <div id="canvasWrap"><svg id="croquisSvg" viewBox="0 0 1120 560" aria-label="Editor de croquis"></svg></div>
 </article>
 </section>
-<footer class="app-footer">STAR Gestiones y Servicios · Asistente de Siniestros v0.11.3</footer>
+<footer class="app-footer">STAR Gestiones y Servicios · Asistente de Siniestros v0.12</footer>
 </main><script src="/app.js"></script><script src="/v010.js"></script><script src="/v011.js"></script>
+<script src="/v012.js"></script>
 </body></html>
