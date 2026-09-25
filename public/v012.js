@@ -1,4 +1,4 @@
-// v0.12: selector progresivo de tipo de siniestro + análisis opcional de póliza.
+// v0.12.2: selector progresivo de tipo de siniestro + análisis opcional de póliza.
 (() => {
   const $ = id => document.getElementById(id);
   const tipo=$('tipoSiniestro'), form=$('formSiniestro'), subtipoWrap=$('subtipoWrap'), subtipo=$('subtipoSiniestro');
@@ -60,11 +60,14 @@
 
   function renderAlertas(items){
     if(!alertasEl)return;
+    const card=alertasEl.closest('.coverage-card');
     const arr=Array.isArray(items)?items:[];
     if(!arr.length){
-      alertasEl.innerHTML='<p class="empty">No se detectaron datos que requieran una revisión especial.</p>';
+      alertasEl.innerHTML='';
+      card?.classList.add('hidden');
       return;
     }
+    card?.classList.remove('hidden');
     const order={alta:0,revisar_poliza:1,informativa:2};
     arr.sort((a,b)=>(order[a.nivel]??9)-(order[b.nivel]??9));
     alertasEl.innerHTML=arr.map(a=>{
@@ -112,6 +115,7 @@
         croquisInterpretacion?.classList.remove('hidden');
         croquisEditor?.classList.remove('hidden');
         if(typeof window.render==='function') window.render(data);
+        renderAlertas(data.alertas_cobertura||[]);
       }else renderGeneral(data);
       estado.textContent='Análisis listo.';
     }catch(e){estado.textContent=e.message}
@@ -147,13 +151,17 @@
       })});
       const data=await res.json();
       if(!res.ok)throw new Error(data.error||'No se pudo analizar la póliza.');
-      const hall=data.hallazgos||[];
-      resultadoPoliza.innerHTML='<div class="policy-result-head"><strong>'+esc(data.conclusion||'Análisis de cobertura')+'</strong></div>'
-        +(data.resumen_poliza?'<p>'+esc(data.resumen_poliza)+'</p>':'')
-        +hall.map(h=>'<div class="policy-finding"><div><strong>'+esc(h.titulo||'Cobertura')+'</strong><span class="policy-status '+esc(h.estado||'revisar')+'">'+esc((h.estado||'revisar').replaceAll('_',' '))+'</span></div><p>'+esc(h.explicacion||'')+'</p>'+(h.referencia?'<small>Referencia: '+esc(h.referencia)+'</small>':'')+'</div>').join('')
-        +'<p class="hint policy-disclaimer">'+esc(data.aclaracion||'La interpretación debe confirmarse con las condiciones completas de la póliza y la aseguradora.')+'</p>';
+      const labels={cubierto:'CUBIERTO',no_cubierto:'NO CUBIERTO',revisar:'REVISAR'};
+      const estadoResultado=data.estado||'revisar';
+      const condiciones=Array.isArray(data.condiciones)?data.condiciones.filter(Boolean):[];
+      resultadoPoliza.innerHTML='<div class="policy-simple-result">'
+        +'<div class="policy-simple-head"><strong>'+esc(data.resumen||'Resultado del análisis')+'</strong><span class="policy-status '+esc(estadoResultado)+'">'+esc(labels[estadoResultado]||'REVISAR')+'</span></div>'
+        +(data.motivo?'<p>'+esc(data.motivo)+'</p>':'')
+        +(condiciones.length?'<div class="policy-conditions"><strong>A tener en cuenta:</strong><ul>'+condiciones.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':'')
+        +(data.referencia?'<small>Referencia: '+esc(data.referencia)+'</small>':'')
+        +'</div>';
       resultadoPoliza.classList.remove('hidden');
-      estadoPoliza.textContent='Póliza analizada.';
+      estadoPoliza.textContent='';
     }catch(e){estadoPoliza.textContent=e.message}
     finally{analizarPoliza.disabled=false;analizarPoliza.textContent='Analizar póliza'}
   });
