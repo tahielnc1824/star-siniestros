@@ -1,0 +1,26 @@
+/* v0.12 */
+.siniestro-start{padding:26px}
+.main-question{font-size:1.08rem;font-weight:800;margin-bottom:10px;display:block}
+.type-select{width:100%;max-width:520px;font-size:1rem;padding:12px 14px;border:1px solid #cfd8df;border-radius:10px;background:#fff}
+.start-hint{margin-top:9px}
+#formSiniestro{animation:revealForm .18s ease-out}
+@keyframes revealForm{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+#subtipoWrap{margin-bottom:14px}
+#subtipoWrap select{width:100%;max-width:430px}
+.policy-check-card{border-top:3px solid #1b7eb5}
+.policy-upload-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.policy-upload-row input[type=file]{max-width:100%;padding:8px;border:1px dashed #b8c8d2;border-radius:9px;background:#fafcfd}
+#estadoPoliza{margin-top:9px}
+#resultadoPoliza{margin-top:14px}
+.policy-result-head{font-size:1.02rem;margin-bottom:10px}
+.policy-finding{padding:12px 0;border-top:1px solid #e5ebef}
+.policy-finding>div{display:flex;gap:10px;justify-content:space-between;align-items:flex-start}
+.policy-finding p{margin:6px 0}
+.policy-finding small{color:#657782}
+.policy-status{font-size:.76rem;font-weight:800;text-transform:uppercase;padding:3px 7px;border-radius:999px;background:#edf3f7;white-space:nowrap}
+.policy-status.cubierto{background:#e7f6ec}
+.policy-status.no_encontrado{background:#f8eceb}
+.policy-status.revisar{background:#fff4d8}
+.policy-status.condicionado{background:#fff4d8}
+.policy-disclaimer{margin-top:12px}
+@media(max-width:680px){.siniestro-start{padding:20px}.policy-finding>div{display:block}.policy-status{display:inline-block;margin-top:6px}}
