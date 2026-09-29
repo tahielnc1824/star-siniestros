@@ -2,9 +2,10 @@
   const $ = id => document.getElementById(id);
   const gate=$('authGate'), shell=$('appShell'), form=$('authForm'), email=$('authEmail'), pass=$('authPassword'),
     submit=$('authSubmit'), msg=$('authMessage'), toggle=$('authModeToggle'), title=$('authTitle'), subtitle=$('authSubtitle'),
-    userEmail=$('sessionEmail'), logout=$('logoutBtn');
+    userEmail=$('sessionEmail'), logout=$('logoutBtn'), forgot=$('forgotPassword'), resetBox=$('resetPasswordBox'),
+    resetPass=$('resetPassword'), resetConfirm=$('resetPasswordConfirm'), resetSubmit=$('resetPasswordSubmit'), resetCancel=$('resetPasswordCancel');
 
-  let cfg=null, mode='login', session=null;
+  let cfg=null, mode='login', session=null, recoverySession=null;
   const STORAGE='star_supabase_session';
 
   function showMessage(text,type=''){
@@ -13,11 +14,15 @@
   }
   function setMode(next){
     mode=next;
+    resetBox?.classList.add('hidden');
+    form?.classList.remove('hidden');
+    document.querySelector('.auth-switch')?.classList.remove('hidden');
     const signup=mode==='signup';
     title.textContent=signup?'Crear cuenta':'Ingresar';
     subtitle.textContent=signup?'Creá tu acceso para usar STAR Siniestros.':'Ingresá con tu email y contraseña.';
     submit.textContent=signup?'Crear cuenta':'Ingresar';
     toggle.textContent=signup?'Ya tengo cuenta':'Crear una cuenta';
+    forgot?.classList.toggle('hidden',signup);
     showMessage('');
   }
   function saveSession(s){
@@ -100,6 +105,19 @@
       if(!cfg.supabaseUrl||!cfg.supabasePublishableKey)throw new Error('Supabase todavía no está configurado.');
       const confirmed=sessionFromHash();
       if(confirmed){
+        const p=new URLSearchParams(location.hash.slice(1));
+        const recovery=p.get('type')==='recovery';
+        if(recovery){
+          recoverySession=confirmed;
+          form?.classList.add('hidden');
+          document.querySelector('.auth-switch')?.classList.add('hidden');
+          forgot?.classList.add('hidden');
+          resetBox?.classList.remove('hidden');
+          title.textContent='Elegí una nueva contraseña';
+          subtitle.textContent='Ingresá una contraseña nueva para tu cuenta.';
+          showMessage('');
+          return;
+        }
         const hydrated=await hydrateUser(confirmed);
         saveSession(hydrated);
         enterApp(hydrated);
@@ -127,7 +145,13 @@
         const redirectTo=location.origin+'/';
         const r=await supa('/auth/v1/signup?redirect_to='+encodeURIComponent(redirectTo),{method:'POST',body:JSON.stringify({email:mail,password})});
         const data=await r.json();
-        if(!r.ok)throw new Error(data?.msg||data?.message||data?.error_description||'No se pudo crear la cuenta.');
+        if(!r.ok){
+          const raw=String(data?.msg||data?.message||data?.error_description||'').toLowerCase();
+          if(raw.includes('already')||raw.includes('registered')||raw.includes('exists')){
+            throw new Error('Ya existe una cuenta con ese correo. Iniciá sesión o recuperá tu contraseña.');
+          }
+          throw new Error(data?.msg||data?.message||data?.error_description||'No se pudo crear la cuenta.');
+        }
         if(data.access_token){saveSession(data);enterApp(data)}
         else{
           setMode('login');
@@ -145,6 +169,57 @@
       submit.disabled=false;
       submit.textContent=mode==='signup'?'Crear cuenta':'Ingresar';
     }
+  });
+
+
+  forgot?.addEventListener('click',async()=>{
+    const mail=email.value.trim();
+    if(!mail){email.focus();showMessage('Ingresá tu email para enviarte el enlace de recuperación.','error');return}
+    forgot.disabled=true;showMessage('Enviando enlace de recuperación…');
+    try{
+      const redirectTo=location.origin+'/';
+      const r=await supa('/auth/v1/recover',{method:'POST',body:JSON.stringify({email:mail,redirect_to:redirectTo})});
+      const data=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(data?.msg||data?.message||'No se pudo enviar el correo de recuperación.');
+      showMessage('Te enviamos un correo para restablecer tu contraseña.','success');
+    }catch(err){showMessage(err.message||'No se pudo enviar el correo de recuperación.','error')}
+    finally{forgot.disabled=false}
+  });
+
+  resetSubmit?.addEventListener('click',async()=>{
+    const p1=resetPass.value, p2=resetConfirm.value;
+    if(!p1||p1.length<6){showMessage('La contraseña debe tener al menos 6 caracteres.','error');return}
+    if(p1!==p2){showMessage('Las contraseñas no coinciden.','error');return}
+    if(!recoverySession?.access_token){showMessage('El enlace de recuperación ya no es válido.','error');return}
+    resetSubmit.disabled=true;showMessage('Actualizando contraseña…');
+    try{
+      const r=await supa('/auth/v1/user',{
+        method:'PUT',
+        headers:{Authorization:'Bearer '+recoverySession.access_token},
+        body:JSON.stringify({password:p1})
+      });
+      const data=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(data?.msg||data?.message||'No se pudo cambiar la contraseña.');
+      history.replaceState(null,'',location.pathname+location.search);
+      recoverySession=null;
+      resetPass.value='';resetConfirm.value='';
+      resetBox.classList.add('hidden');
+      form.classList.remove('hidden');
+      document.querySelector('.auth-switch')?.classList.remove('hidden');
+      setMode('login');
+      showMessage('Contraseña actualizada. Ya podés iniciar sesión.','success');
+    }catch(err){showMessage(err.message||'No se pudo cambiar la contraseña.','error')}
+    finally{resetSubmit.disabled=false}
+  });
+
+  resetCancel?.addEventListener('click',()=>{
+    history.replaceState(null,'',location.pathname+location.search);
+    recoverySession=null;
+    resetPass.value='';resetConfirm.value='';
+    resetBox.classList.add('hidden');
+    form.classList.remove('hidden');
+    document.querySelector('.auth-switch')?.classList.remove('hidden');
+    setMode('login');
   });
 
   toggle?.addEventListener('click',()=>setMode(mode==='login'?'signup':'login'));
