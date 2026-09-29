@@ -71,10 +71,40 @@
     gate.classList.remove('hidden');
     userEmail.textContent='';
   }
+  function sessionFromHash(){
+    if(!location.hash||!location.hash.includes('access_token='))return null;
+    const p=new URLSearchParams(location.hash.slice(1));
+    const access_token=p.get('access_token');
+    const refresh_token=p.get('refresh_token');
+    if(!access_token)return null;
+    const s={
+      access_token,
+      refresh_token:refresh_token||'',
+      token_type:p.get('token_type')||'bearer',
+      expires_in:Number(p.get('expires_in')||0),
+      expires_at:Math.floor(Date.now()/1000)+Number(p.get('expires_in')||3600),
+      user:null
+    };
+    history.replaceState(null,'',location.pathname+location.search);
+    return s;
+  }
+  async function hydrateUser(current){
+    if(!current?.access_token)return current;
+    const r=await supa('/auth/v1/user',{headers:{Authorization:'Bearer '+current.access_token}});
+    if(r.ok)current.user=await r.json();
+    return current;
+  }
   async function boot(){
     try{
       cfg=await publicConfig();
       if(!cfg.supabaseUrl||!cfg.supabasePublishableKey)throw new Error('Supabase todavía no está configurado.');
+      const confirmed=sessionFromHash();
+      if(confirmed){
+        const hydrated=await hydrateUser(confirmed);
+        saveSession(hydrated);
+        enterApp(hydrated);
+        return;
+      }
       const valid=await validateSession(getStored());
       if(valid){saveSession(valid);enterApp(valid)}
       else{saveSession(null);enterGate()}
@@ -94,7 +124,8 @@
     showMessage('');
     try{
       if(mode==='signup'){
-        const r=await supa('/auth/v1/signup',{method:'POST',body:JSON.stringify({email:mail,password})});
+        const redirectTo=location.origin+'/';
+        const r=await supa('/auth/v1/signup?redirect_to='+encodeURIComponent(redirectTo),{method:'POST',body:JSON.stringify({email:mail,password})});
         const data=await r.json();
         if(!r.ok)throw new Error(data?.msg||data?.message||data?.error_description||'No se pudo crear la cuenta.');
         if(data.access_token){saveSession(data);enterApp(data)}
