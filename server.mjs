@@ -25,6 +25,38 @@ loadEnv();
 
 const PORT = Number(process.env.PORT || 3000);
 const MODEL = process.env.OPENAI_MODEL || 'gpt-5.6-luna';
+const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/$/,'');
+const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || '';
+const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY || '';
+
+async function requireUser(req,res){
+  const auth=String(req.headers.authorization||'');
+  if(!auth.startsWith('Bearer ')){
+    sendJson(res,401,{error:'Necesitás iniciar sesión.'});
+    return null;
+  }
+  if(!SUPABASE_URL||!SUPABASE_PUBLISHABLE_KEY){
+    sendJson(res,500,{error:'Supabase no está configurado en el servidor.'});
+    return null;
+  }
+  try{
+    const r=await fetch(SUPABASE_URL+'/auth/v1/user',{
+      headers:{
+        apikey:SUPABASE_PUBLISHABLE_KEY,
+        Authorization:auth
+      }
+    });
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok||!data?.id){
+      sendJson(res,401,{error:'La sesión venció o no es válida.'});
+      return null;
+    }
+    return data;
+  }catch{
+    sendJson(res,502,{error:'No se pudo validar la sesión.'});
+    return null;
+  }
+}
 
 const schema = {
   type: 'object', additionalProperties: false,
@@ -443,12 +475,16 @@ function serveStatic(req,res){
 
 const server=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&req.url==='/health'){
-    return sendJson(res,200,{ok:true,version:'0.12.4',time:new Date().toISOString()});
+    return sendJson(res,200,{ok:true,version:'0.13.0-commercial',time:new Date().toISOString()});
+  }
+  if(req.method==='GET'&&req.url==='/api/public-config'){
+    return sendJson(res,200,{supabaseUrl:SUPABASE_URL,supabasePublishableKey:SUPABASE_PUBLISHABLE_KEY});
   }
   if(req.method==='GET'&&(req.url==='/'||req.url==='/index.html')){
     console.log('[HTTP]',req.method,req.url,new Date().toISOString());
   }
   if(req.method==='POST'&&req.url==='/api/corregir-croquis'){
+    const user=await requireUser(req,res); if(!user)return;
     try{
       let body=''; for await(const chunk of req){body+=chunk;if(body.length>150_000)throw new Error('Solicitud demasiado grande');}
       const data=JSON.parse(body||'{}');
@@ -471,6 +507,7 @@ ${JSON.stringify(escena,null,2)}`;
     }catch(err){console.error(err);return sendJson(res,500,{error:err.message||'Error interno.'});}
   }
   if(req.method==='POST'&&req.url==='/api/analizar'){
+    const user=await requireUser(req,res); if(!user)return;
     try{
       let body=''; for await(const chunk of req){body+=chunk;if(body.length>100_000)throw new Error('Solicitud demasiado grande');}
       const data=JSON.parse(body||'{}'); const relato=String(data.relato||'').trim(); const danos=String(data.danos||'').trim(); const croquisAyuda=String(data.croquisAyuda||'').trim(); const perfilPoliza=data.perfilPoliza||{}; const tipoSiniestro=String(data.tipoSiniestro||'choque').trim()||'choque'; const subtipoSiniestro=String(data.subtipoSiniestro||'').trim();
@@ -487,6 +524,7 @@ ${JSON.stringify(escena,null,2)}`;
     }catch(err){console.error(err);return sendJson(res,500,{error:err.message||'Error interno.'});}
   }
   if(req.method==='POST'&&req.url==='/api/analizar-poliza'){
+    const user=await requireUser(req,res); if(!user)return;
     try{
       let body=''; for await(const chunk of req){body+=chunk;if(body.length>15_000_000)throw new Error('La póliza es demasiado grande.');}
       const data=JSON.parse(body||'{}');
@@ -542,4 +580,4 @@ ${JSON.stringify(escena,null,2)}`;
 server.keepAliveTimeout=65_000;
 server.headersTimeout=66_000;
 server.requestTimeout=120_000;
-server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros v0.12.4: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
+server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros comercial v0.13.0: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
