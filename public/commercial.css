@@ -17,3 +17,6 @@
 .session-email{font-size:13px;font-weight:700;color:#527187;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .commercial-badge{display:inline-block;margin-left:7px;padding:3px 7px;border-radius:999px;background:#e6f4fb;color:#075d91;font-size:10px;letter-spacing:.08em;vertical-align:1px}
 @media(max-width:760px){.session-box{width:100%;justify-content:space-between}.session-email{max-width:200px}}
+
+.auth-link{border:0;background:transparent;color:var(--star-blue-dark);font:inherit;font-weight:700;cursor:pointer;padding:4px 0;text-align:center}
+.auth-link:hover{text-decoration:underline}
