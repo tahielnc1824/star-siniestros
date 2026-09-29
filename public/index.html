@@ -3,20 +3,38 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Asistente de Siniestros</title><link rel="icon" type="image/png" href="/favicon.png"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/v010.css"><link rel="stylesheet" href="/v011.css">
-<link rel="stylesheet" href="/v012.css">
+<link rel="stylesheet" href="/v012.css"><link rel="stylesheet" href="/commercial.css">
 </head>
 <body>
-<main class="wrap">
+<section id="authGate" class="auth-gate">
+  <div class="auth-card">
+    <img class="auth-logo" src="/logo-star.png" alt="STAR Gestiones y Servicios">
+    <h1 id="authTitle">Ingresar</h1>
+    <p id="authSubtitle">Ingresá con tu email y contraseña.</p>
+    <form id="authForm" class="auth-form">
+      <label>Email
+        <input id="authEmail" type="email" autocomplete="email" required placeholder="tu@email.com">
+      </label>
+      <label>Contraseña
+        <input id="authPassword" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••">
+      </label>
+      <button id="authSubmit" class="primary" type="submit">Ingresar</button>
+    </form>
+    <div id="authMessage" class="auth-message" aria-live="polite"></div>
+    <div class="auth-switch"><button id="authModeToggle" type="button">Crear una cuenta</button></div>
+  </div>
+</section>
+<main id="appShell" class="wrap hidden">
 <header class="brand-header">
   <div class="brand-main">
     <img class="brand-logo" src="/logo-star.png" alt="STAR Gestiones y Servicios">
     <div class="brand-copy">
-      <div class="eyebrow">Herramienta interna · v0.12.4</div>
+      <div class="eyebrow">STAR Siniestros <span class="commercial-badge">COMERCIAL</span> · v0.13.0</div>
       <h1 id="appTitle">Asistente de Siniestros</h1>
       <p>Ingresá el relato y, si corresponde, los daños. Nada queda guardado.</p>
     </div>
   </div>
-  <button id="limpiar" class="ghost">Limpiar</button>
+  <div class="session-box"><span id="sessionEmail" class="session-email"></span><button id="limpiar" class="ghost">Limpiar</button><button id="logoutBtn" class="ghost">Cerrar sesión</button></div>
 </header>
 <section class="card siniestro-start">
   <label for="tipoSiniestro" class="main-question">¿Qué tipo de siniestro querés analizar?</label>
@@ -113,7 +131,7 @@
 <div id="canvasWrap"><svg id="croquisSvg" viewBox="0 0 1120 560" aria-label="Editor de croquis"></svg></div>
 </article>
 </section>
-<footer class="app-footer">STAR Gestiones y Servicios · Asistente de Siniestros v0.12.4</footer>
-</main><script src="/app.js"></script><script src="/v010.js"></script><script src="/v011.js"></script>
+<footer class="app-footer">STAR Gestiones y Servicios · Asistente de Siniestros Comercial v0.13.0</footer>
+</main><script src="/auth.js"></script><script src="/app.js"></script><script src="/v010.js"></script><script src="/v011.js"></script>
 <script src="/v012.js"></script>
 </body></html>
