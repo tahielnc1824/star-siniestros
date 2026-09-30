@@ -20,3 +20,13 @@
 
 .auth-link{border:0;background:transparent;color:var(--star-blue-dark);font:inherit;font-weight:700;cursor:pointer;padding:4px 0;text-align:center}
 .auth-link:hover{text-decoration:underline}
+
+.password-field{position:relative;display:block}
+.password-field input{padding-right:48px}
+.password-toggle{
+  position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  width:36px;height:36px;border:0;background:transparent;border-radius:8px;
+  cursor:pointer;font-size:17px;line-height:1;display:grid;place-items:center
+}
+.password-toggle:hover{background:#edf6fb}
+.password-toggle:focus-visible{outline:2px solid var(--star-blue);outline-offset:1px}
