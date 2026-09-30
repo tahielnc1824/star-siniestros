@@ -93,7 +93,7 @@
       auth_event:p.get('type')||'',
       user:null
     };
-    history.replaceState(null,'',location.pathname+location.search);
+    window.history.replaceState(null,'',location.pathname+location.search);
     return s;
   }
   async function hydrateUser(current){
@@ -216,7 +216,7 @@
       });
       const data=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(data?.msg||data?.message||'No se pudo cambiar la contraseña.');
-      history.replaceState(null,'',location.pathname+location.search);
+      window.history.replaceState(null,'',location.pathname+location.search);
       recoverySession=null;
       resetPass.value='';resetConfirm.value='';
       resetBox.classList.add('hidden');
@@ -229,7 +229,7 @@
   });
 
   resetCancel?.addEventListener('click',()=>{
-    history.replaceState(null,'',location.pathname+location.search);
+    window.history.replaceState(null,'',location.pathname+location.search);
     recoverySession=null;
     resetPass.value='';resetConfirm.value='';
     resetBox.classList.add('hidden');
