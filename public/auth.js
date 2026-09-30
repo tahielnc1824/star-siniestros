@@ -13,6 +13,27 @@
     msg.textContent=text||'';
     msg.className='auth-message'+(type?' '+type:'');
   }
+
+  function translateAuthError(value,fallback='Ocurrió un error. Intentá nuevamente.'){
+    const raw=String(value||'').trim();
+    const s=raw.toLowerCase();
+    if(!s)return fallback;
+
+    if(s.includes('new password should be different from the old password')) return 'La nueva contraseña debe ser distinta de la anterior.';
+    if(s.includes('password should be at least') || s.includes('password must be at least')) return 'La contraseña debe tener al menos 6 caracteres.';
+    if(s.includes('weak password')) return 'La contraseña elegida es demasiado débil. Probá con una más segura.';
+    if(s.includes('invalid login credentials')) return 'El email o la contraseña son incorrectos.';
+    if(s.includes('email not confirmed')) return 'Todavía no confirmaste tu correo. Revisá tu bandeja de entrada.';
+    if(s.includes('user already registered') || s.includes('already registered') || s.includes('already exists')) return 'Ya existe una cuenta con ese correo. Iniciá sesión o recuperá tu contraseña.';
+    if(s.includes('email rate limit exceeded') || s.includes('rate limit')) return 'Hiciste demasiados intentos seguidos. Esperá un momento y volvé a probar.';
+    if(s.includes('for security purposes') && s.includes('seconds')) return 'Por seguridad, esperá unos segundos antes de volver a intentarlo.';
+    if(s.includes('token has expired') || s.includes('otp_expired') || s.includes('expired')) return 'El enlace venció. Solicitá uno nuevo.';
+    if(s.includes('invalid token') || s.includes('otp_disabled') || s.includes('bad_jwt')) return 'El enlace ya no es válido. Solicitá uno nuevo.';
+    if(s.includes('signup is disabled')) return 'El registro de nuevas cuentas está deshabilitado.';
+    if(s.includes('email address') && s.includes('invalid')) return 'Ingresá una dirección de email válida.';
+    if(s.includes('network') || s.includes('fetch')) return 'No se pudo conectar con el servicio. Revisá tu conexión e intentá nuevamente.';
+    return fallback;
+  }
   function setMode(next){
     mode=next;
     forgotBox?.classList.add('hidden');
@@ -149,11 +170,8 @@
         const r=await supa('/auth/v1/signup?redirect_to='+encodeURIComponent(redirectTo),{method:'POST',body:JSON.stringify({email:mail,password})});
         const data=await r.json();
         if(!r.ok){
-          const raw=String(data?.msg||data?.message||data?.error_description||'').toLowerCase();
-          if(raw.includes('already')||raw.includes('registered')||raw.includes('exists')){
-            throw new Error('Ya existe una cuenta con ese correo. Iniciá sesión o recuperá tu contraseña.');
-          }
-          throw new Error(data?.msg||data?.message||data?.error_description||'No se pudo crear la cuenta.');
+          const raw=data?.msg||data?.message||data?.error_description||'';
+          throw new Error(translateAuthError(raw,'No se pudo crear la cuenta.'));
         }
         if(data.access_token){saveSession(data);enterApp(data)}
         else{
@@ -164,7 +182,7 @@
       }else{
         const r=await supa('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email:mail,password})});
         const data=await r.json();
-        if(!r.ok)throw new Error(data?.msg||data?.message||data?.error_description||'Email o contraseña incorrectos.');
+        if(!r.ok)throw new Error(translateAuthError(data?.msg||data?.message||data?.error_description,'Email o contraseña incorrectos.'));
         saveSession(data);enterApp(data);
       }
     }catch(err){showMessage(err.message||'No se pudo completar el acceso.','error')}
@@ -194,7 +212,7 @@
       const redirectTo=location.origin+'/';
       const r=await supa('/auth/v1/recover',{method:'POST',body:JSON.stringify({email:mail,redirect_to:redirectTo})});
       const data=await r.json().catch(()=>({}));
-      if(!r.ok)throw new Error(data?.msg||data?.message||'No se pudo enviar el correo de recuperación.');
+      if(!r.ok)throw new Error(translateAuthError(data?.msg||data?.message,'No se pudo enviar el correo de recuperación.'));
       showMessage('Si existe una cuenta con ese correo, te enviamos un enlace para restablecer la contraseña.','success');
     }catch(err){showMessage(err.message||'No se pudo enviar el correo de recuperación.','error')}
     finally{forgotSubmit.disabled=false;forgotSubmit.textContent='Enviar enlace de recuperación'}
@@ -215,7 +233,7 @@
         body:JSON.stringify({password:p1})
       });
       const data=await r.json().catch(()=>({}));
-      if(!r.ok)throw new Error(data?.msg||data?.message||'No se pudo cambiar la contraseña.');
+      if(!r.ok)throw new Error(translateAuthError(data?.msg||data?.message,'No se pudo cambiar la contraseña.'));
       window.history.replaceState(null,'',location.pathname+location.search);
       recoverySession=null;
       resetPass.value='';resetConfirm.value='';
@@ -236,6 +254,18 @@
     form.classList.remove('hidden');
     document.querySelector('.auth-switch')?.classList.remove('hidden');
     setMode('login');
+  });
+
+  document.querySelectorAll('.password-toggle').forEach(button=>{
+    button.addEventListener('click',()=>{
+      const input=$(button.dataset.passwordTarget);
+      if(!input)return;
+      const showing=input.type==='text';
+      input.type=showing?'password':'text';
+      button.textContent=showing?'👁':'🙈';
+      button.setAttribute('aria-label',showing?'Mostrar contraseña':'Ocultar contraseña');
+      button.title=showing?'Mostrar contraseña':'Ocultar contraseña';
+    });
   });
 
   toggle?.addEventListener('click',()=>setMode(mode==='login'?'signup':'login'));
