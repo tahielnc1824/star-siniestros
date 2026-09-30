@@ -29,7 +29,6 @@ const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/$/,'');
 const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || '';
 const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY || '';
 const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
-const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 
 function isAdminUser(user){
   return String(user?.email||'').trim().toLowerCase()===ADMIN_EMAIL;
