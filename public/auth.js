@@ -2,7 +2,8 @@
   const $ = id => document.getElementById(id);
   const gate=$('authGate'), shell=$('appShell'), form=$('authForm'), email=$('authEmail'), pass=$('authPassword'),
     submit=$('authSubmit'), msg=$('authMessage'), toggle=$('authModeToggle'), title=$('authTitle'), subtitle=$('authSubtitle'),
-    userEmail=$('sessionEmail'), logout=$('logoutBtn'), forgot=$('forgotPassword'), resetBox=$('resetPasswordBox'),
+    userEmail=$('sessionEmail'), logout=$('logoutBtn'), forgot=$('forgotPassword'), forgotBox=$('forgotPasswordBox'),
+    forgotEmail=$('forgotEmail'), forgotSubmit=$('forgotSubmit'), forgotCancel=$('forgotCancel'), resetBox=$('resetPasswordBox'),
     resetPass=$('resetPassword'), resetConfirm=$('resetPasswordConfirm'), resetSubmit=$('resetPasswordSubmit'), resetCancel=$('resetPasswordCancel');
 
   let cfg=null, mode='login', session=null, recoverySession=null;
@@ -14,6 +15,7 @@
   }
   function setMode(next){
     mode=next;
+    forgotBox?.classList.add('hidden');
     resetBox?.classList.add('hidden');
     form?.classList.remove('hidden');
     document.querySelector('.auth-switch')?.classList.remove('hidden');
@@ -88,6 +90,7 @@
       token_type:p.get('token_type')||'bearer',
       expires_in:Number(p.get('expires_in')||0),
       expires_at:Math.floor(Date.now()/1000)+Number(p.get('expires_in')||3600),
+      auth_event:p.get('type')||'',
       user:null
     };
     history.replaceState(null,'',location.pathname+location.search);
@@ -105,11 +108,11 @@
       if(!cfg.supabaseUrl||!cfg.supabasePublishableKey)throw new Error('Supabase todavía no está configurado.');
       const confirmed=sessionFromHash();
       if(confirmed){
-        const p=new URLSearchParams(location.hash.slice(1));
-        const recovery=p.get('type')==='recovery';
+        const recovery=confirmed.auth_event==='recovery';
         if(recovery){
           recoverySession=confirmed;
           form?.classList.add('hidden');
+          forgotBox?.classList.add('hidden');
           document.querySelector('.auth-switch')?.classList.add('hidden');
           forgot?.classList.add('hidden');
           resetBox?.classList.remove('hidden');
@@ -172,19 +175,32 @@
   });
 
 
-  forgot?.addEventListener('click',async()=>{
-    const mail=email.value.trim();
-    if(!mail){email.focus();showMessage('Ingresá tu email para enviarte el enlace de recuperación.','error');return}
-    forgot.disabled=true;showMessage('Enviando enlace de recuperación…');
+  forgot?.addEventListener('click',()=>{
+    form.classList.add('hidden');
+    forgotBox.classList.remove('hidden');
+    document.querySelector('.auth-switch')?.classList.add('hidden');
+    title.textContent='Recuperar contraseña';
+    subtitle.textContent='Ingresá el email de tu cuenta y te enviaremos un enlace para cambiar la contraseña.';
+    forgotEmail.value='';
+    forgotEmail.focus();
+    showMessage('');
+  });
+
+  forgotSubmit?.addEventListener('click',async()=>{
+    const mail=forgotEmail.value.trim();
+    if(!mail){forgotEmail.focus();showMessage('Ingresá tu email.','error');return}
+    forgotSubmit.disabled=true;forgotSubmit.textContent='Enviando…';showMessage('');
     try{
       const redirectTo=location.origin+'/';
       const r=await supa('/auth/v1/recover',{method:'POST',body:JSON.stringify({email:mail,redirect_to:redirectTo})});
       const data=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(data?.msg||data?.message||'No se pudo enviar el correo de recuperación.');
-      showMessage('Te enviamos un correo para restablecer tu contraseña.','success');
+      showMessage('Si existe una cuenta con ese correo, te enviamos un enlace para restablecer la contraseña.','success');
     }catch(err){showMessage(err.message||'No se pudo enviar el correo de recuperación.','error')}
-    finally{forgot.disabled=false}
+    finally{forgotSubmit.disabled=false;forgotSubmit.textContent='Enviar enlace de recuperación'}
   });
+
+  forgotCancel?.addEventListener('click',()=>setMode('login'));
 
   resetSubmit?.addEventListener('click',async()=>{
     const p1=resetPass.value, p2=resetConfirm.value;
