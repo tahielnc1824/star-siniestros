@@ -4,7 +4,8 @@
     submit=$('authSubmit'), msg=$('authMessage'), toggle=$('authModeToggle'), title=$('authTitle'), subtitle=$('authSubtitle'),
     userEmail=$('sessionEmail'), adminBadge=$('adminBadge'), adminPanelBtn=$('adminPanelBtn'), adminPanel=$('adminPanel'),
     adminClose=$('adminClose'), adminTotal=$('adminTotal'), adminConfirmed=$('adminConfirmed'), adminEnabled=$('adminEnabled'),
-    adminStatus=$('adminStatus'), logout=$('logoutBtn'), forgot=$('forgotPassword'), forgotBox=$('forgotPasswordBox'),
+    adminStatus=$('adminStatus'), adminSearch=$('adminSearch'), adminRefresh=$('adminRefresh'), adminUsersBody=$('adminUsersBody'),
+    logout=$('logoutBtn'), forgot=$('forgotPassword'), forgotBox=$('forgotPasswordBox'),
     forgotEmail=$('forgotEmail'), forgotSubmit=$('forgotSubmit'), forgotCancel=$('forgotCancel'), resetBox=$('resetPasswordBox'),
     resetPass=$('resetPassword'), resetConfirm=$('resetPasswordConfirm'), resetSubmit=$('resetPasswordSubmit'), resetCancel=$('resetPasswordCancel');
 
@@ -281,27 +282,96 @@
       if(!input)return;
       const showing=input.type==='text';
       input.type=showing?'password':'text';
-      button.textContent=showing?'◉':'◎';
+      button.classList.toggle('showing',!showing);
       button.setAttribute('aria-label',showing?'Mostrar contraseña':'Ocultar contraseña');
       button.title=showing?'Mostrar contraseña':'Ocultar contraseña';
     });
   });
 
+  let adminUsers=[];
+
+  function adminIsSuspended(user){
+    return user?.banned_until && new Date(user.banned_until).getTime()>Date.now();
+  }
+
+  function adminFormatDate(value){
+    if(!value)return '—';
+    try{return new Intl.DateTimeFormat('es-AR',{dateStyle:'short',timeStyle:'short'}).format(new Date(value))}
+    catch{return '—'}
+  }
+
+  function renderAdminUsers(){
+    if(!adminUsersBody)return;
+    const q=String(adminSearch?.value||'').trim().toLowerCase();
+    const list=adminUsers.filter(u=>!q||String(u.email||'').toLowerCase().includes(q));
+
+    adminTotal.textContent=adminUsers.length;
+    adminConfirmed.textContent=adminUsers.filter(u=>u.email_confirmed_at).length;
+    adminEnabled.textContent=adminUsers.filter(u=>!adminIsSuspended(u)).length;
+
+    if(!list.length){
+      adminUsersBody.innerHTML='<tr><td colspan="6" class="admin-empty">No hay usuarios para mostrar.</td></tr>';
+      return;
+    }
+
+    adminUsersBody.innerHTML=list.map(u=>{
+      const suspended=adminIsSuspended(u);
+      const status=suspended?'Suspendido':(u.email_confirmed_at?'Activo':'Sin confirmar');
+      const role=u.is_admin?'Administrador':'Usuario';
+      const action=u.is_admin?'—':'<button class="ghost small admin-user-action" data-id="'+u.id+'" data-enable="'+(suspended?'true':'false')+'">'+(suspended?'Reactivar':'Suspender')+'</button>';
+      return '<tr>'+
+        '<td><strong>'+String(u.email||'Sin email')+'</strong></td>'+
+        '<td>'+role+'</td>'+
+        '<td>'+status+'</td>'+
+        '<td>'+adminFormatDate(u.created_at)+'</td>'+
+        '<td>'+adminFormatDate(u.last_sign_in_at)+'</td>'+
+        '<td>'+action+'</td>'+
+      '</tr>';
+    }).join('');
+  }
+
   async function loadAdminSummary(){
     if(!adminStatus)return;
-    adminStatus.textContent='Cargando resumen…';
+    adminStatus.textContent='Cargando usuarios…';
+    if(adminRefresh)adminRefresh.disabled=true;
     try{
-      const r=await fetch('/api/admin/summary');
+      const r=await fetch('/api/admin/users');
       const data=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(data.error||'No se pudo cargar el panel.');
-      adminTotal.textContent=data.total??'—';
-      adminConfirmed.textContent=data.confirmed??'—';
-      adminEnabled.textContent=data.enabled??'—';
+      adminUsers=Array.isArray(data.users)?data.users:[];
+      renderAdminUsers();
       adminStatus.textContent='';
     }catch(err){
       adminStatus.textContent=err.message||'No se pudo cargar el panel.';
+    }finally{
+      if(adminRefresh)adminRefresh.disabled=false;
     }
   }
+
+  adminSearch?.addEventListener('input',renderAdminUsers);
+  adminRefresh?.addEventListener('click',loadAdminSummary);
+
+  adminUsersBody?.addEventListener('click',async event=>{
+    const button=event.target.closest('.admin-user-action');
+    if(!button)return;
+    const id=button.dataset.id;
+    const enabled=button.dataset.enable==='true';
+    button.disabled=true;
+    adminStatus.textContent=enabled?'Reactivando usuario…':'Suspendiendo usuario…';
+    try{
+      const r=await fetch('/api/admin/users/status',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({id,enabled})
+      });
+      const data=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(data.error||'No se pudo actualizar el usuario.');
+      await loadAdminSummary();
+    }catch(err){
+      adminStatus.textContent=err.message||'No se pudo actualizar el usuario.';
+      button.disabled=false;
+    }
+  });
 
   adminPanelBtn?.addEventListener('click',()=>{
     adminPanel?.classList.remove('hidden');
