@@ -2,7 +2,9 @@
   const $ = id => document.getElementById(id);
   const gate=$('authGate'), shell=$('appShell'), form=$('authForm'), email=$('authEmail'), pass=$('authPassword'),
     submit=$('authSubmit'), msg=$('authMessage'), toggle=$('authModeToggle'), title=$('authTitle'), subtitle=$('authSubtitle'),
-    userEmail=$('sessionEmail'), adminBadge=$('adminBadge'), logout=$('logoutBtn'), forgot=$('forgotPassword'), forgotBox=$('forgotPasswordBox'),
+    userEmail=$('sessionEmail'), adminBadge=$('adminBadge'), adminPanelBtn=$('adminPanelBtn'), adminPanel=$('adminPanel'),
+    adminClose=$('adminClose'), adminTotal=$('adminTotal'), adminConfirmed=$('adminConfirmed'), adminEnabled=$('adminEnabled'),
+    adminStatus=$('adminStatus'), logout=$('logoutBtn'), forgot=$('forgotPassword'), forgotBox=$('forgotPasswordBox'),
     forgotEmail=$('forgotEmail'), forgotSubmit=$('forgotSubmit'), forgotCancel=$('forgotCancel'), resetBox=$('resetPasswordBox'),
     resetPass=$('resetPassword'), resetConfirm=$('resetPasswordConfirm'), resetSubmit=$('resetPasswordSubmit'), resetCancel=$('resetPasswordCancel');
 
@@ -95,6 +97,7 @@
       const data=await r.json();
       const isAdmin=data?.role==='admin';
       adminBadge?.classList.toggle('hidden',!isAdmin);
+      adminPanelBtn?.classList.toggle('hidden',!isAdmin);
       document.body.dataset.role=isAdmin?'admin':'user';
     }catch{}
   }
@@ -111,6 +114,8 @@
     gate.classList.remove('hidden');
     userEmail.textContent='';
     adminBadge?.classList.add('hidden');
+    adminPanelBtn?.classList.add('hidden');
+    adminPanel?.classList.add('hidden');
     delete document.body.dataset.role;
   }
   function sessionFromHash(){
@@ -276,11 +281,34 @@
       if(!input)return;
       const showing=input.type==='text';
       input.type=showing?'password':'text';
-      button.textContent=showing?'👁':'🙈';
+      button.textContent=showing?'◉':'◎';
       button.setAttribute('aria-label',showing?'Mostrar contraseña':'Ocultar contraseña');
       button.title=showing?'Mostrar contraseña':'Ocultar contraseña';
     });
   });
+
+  async function loadAdminSummary(){
+    if(!adminStatus)return;
+    adminStatus.textContent='Cargando resumen…';
+    try{
+      const r=await fetch('/api/admin/summary');
+      const data=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(data.error||'No se pudo cargar el panel.');
+      adminTotal.textContent=data.total??'—';
+      adminConfirmed.textContent=data.confirmed??'—';
+      adminEnabled.textContent=data.enabled??'—';
+      adminStatus.textContent='';
+    }catch(err){
+      adminStatus.textContent=err.message||'No se pudo cargar el panel.';
+    }
+  }
+
+  adminPanelBtn?.addEventListener('click',()=>{
+    adminPanel?.classList.remove('hidden');
+    loadAdminSummary();
+    adminPanel?.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+  adminClose?.addEventListener('click',()=>adminPanel?.classList.add('hidden'));
 
   toggle?.addEventListener('click',()=>setMode(mode==='login'?'signup':'login'));
   logout?.addEventListener('click',async()=>{
