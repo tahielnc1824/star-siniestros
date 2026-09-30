@@ -28,6 +28,7 @@ const MODEL = process.env.OPENAI_MODEL || 'gpt-5.6-luna';
 const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/$/,'');
 const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || '';
 const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY || '';
+const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 
 async function requireUser(req,res){
   const auth=String(req.headers.authorization||'');
@@ -475,10 +476,19 @@ function serveStatic(req,res){
 
 const server=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&req.url==='/health'){
-    return sendJson(res,200,{ok:true,version:'0.13.0-commercial',time:new Date().toISOString()});
+    return sendJson(res,200,{ok:true,version:'0.13.5-commercial',time:new Date().toISOString()});
   }
   if(req.method==='GET'&&req.url==='/api/public-config'){
     return sendJson(res,200,{supabaseUrl:SUPABASE_URL,supabasePublishableKey:SUPABASE_PUBLISHABLE_KEY});
+  }
+  if(req.method==='GET'&&req.url==='/api/me'){
+    const user=await requireUser(req,res); if(!user)return;
+    const email=String(user.email||'').trim().toLowerCase();
+    return sendJson(res,200,{
+      id:user.id,
+      email:user.email||'',
+      role:email&&ADMIN_EMAIL&&email===ADMIN_EMAIL?'admin':'user'
+    });
   }
   if(req.method==='GET'&&(req.url==='/'||req.url==='/index.html')){
     console.log('[HTTP]',req.method,req.url,new Date().toISOString());
@@ -580,4 +590,4 @@ ${JSON.stringify(escena,null,2)}`;
 server.keepAliveTimeout=65_000;
 server.headersTimeout=66_000;
 server.requestTimeout=120_000;
-server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros comercial v0.13.0: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
+server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros comercial v0.13.5: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
