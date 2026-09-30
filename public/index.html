@@ -56,7 +56,7 @@
   <div class="brand-main">
     <img class="brand-logo" src="/logo-star.png" alt="STAR Gestiones y Servicios">
     <div class="brand-copy">
-      <div class="eyebrow">STAR Siniestros <span class="commercial-badge">COMERCIAL</span> · v0.14.0</div>
+      <div class="eyebrow">STAR Siniestros <span class="commercial-badge">COMERCIAL</span> · v0.14.1</div>
       <h1 id="appTitle">Asistente de Siniestros</h1>
       <p>Ingresá el relato y, si corresponde, los daños. Nada queda guardado.</p>
     </div>
@@ -73,7 +73,21 @@
     <div><strong id="adminConfirmed">—</strong><span>Confirmados</span></div>
     <div><strong id="adminEnabled">—</strong><span>Habilitados</span></div>
   </div>
+  <div class="admin-toolbar">
+    <input id="adminSearch" type="search" placeholder="Buscar usuario por email...">
+    <button id="adminRefresh" class="ghost small">Actualizar</button>
+  </div>
   <div id="adminStatus" class="hint"></div>
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr><th>Email</th><th>Rol</th><th>Estado</th><th>Registro</th><th>Último acceso</th><th>Acción</th></tr>
+      </thead>
+      <tbody id="adminUsersBody">
+        <tr><td colspan="6" class="admin-empty">Todavía no se cargaron usuarios.</td></tr>
+      </tbody>
+    </table>
+  </div>
 </section>
 
 <section class="card siniestro-start">
@@ -171,7 +185,7 @@
 <div id="canvasWrap"><svg id="croquisSvg" viewBox="0 0 1120 560" aria-label="Editor de croquis"></svg></div>
 </article>
 </section>
-<footer class="app-footer">STAR Gestiones y Servicios · Asistente de Siniestros Comercial v0.14.0</footer>
+<footer class="app-footer">STAR Gestiones y Servicios · Asistente de Siniestros Comercial v0.14.1</footer>
 </main><script src="/auth.js"></script><script src="/app.js"></script><script src="/v010.js"></script><script src="/v011.js"></script>
 <script src="/v012.js"></script>
 </body></html>
