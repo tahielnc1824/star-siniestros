@@ -16,7 +16,10 @@
         <input id="authEmail" type="email" autocomplete="email" required placeholder="tu@email.com">
       </label>
       <label>Contraseña
-        <input id="authPassword" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••">
+        <span class="password-field">
+          <input id="authPassword" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••">
+          <button class="password-toggle" type="button" data-password-target="authPassword" aria-label="Mostrar contraseña" title="Mostrar contraseña">👁</button>
+        </span>
       </label>
       <button id="authSubmit" class="primary" type="submit">Ingresar</button>
       <button id="forgotPassword" class="auth-link" type="button">¿Olvidaste tu contraseña?</button>
@@ -30,10 +33,16 @@
     </div>
     <div id="resetPasswordBox" class="auth-form hidden">
       <label>Nueva contraseña
-        <input id="resetPassword" type="password" autocomplete="new-password" minlength="6" placeholder="••••••••">
+        <span class="password-field">
+          <input id="resetPassword" type="password" autocomplete="new-password" minlength="6" placeholder="••••••••">
+          <button class="password-toggle" type="button" data-password-target="resetPassword" aria-label="Mostrar contraseña" title="Mostrar contraseña">👁</button>
+        </span>
       </label>
       <label>Repetir contraseña
-        <input id="resetPasswordConfirm" type="password" autocomplete="new-password" minlength="6" placeholder="••••••••">
+        <span class="password-field">
+          <input id="resetPasswordConfirm" type="password" autocomplete="new-password" minlength="6" placeholder="••••••••">
+          <button class="password-toggle" type="button" data-password-target="resetPasswordConfirm" aria-label="Mostrar contraseña" title="Mostrar contraseña">👁</button>
+        </span>
       </label>
       <button id="resetPasswordSubmit" class="primary" type="button">Guardar nueva contraseña</button>
       <button id="resetPasswordCancel" class="auth-link" type="button">Cancelar</button>
@@ -47,7 +56,7 @@
   <div class="brand-main">
     <img class="brand-logo" src="/logo-star.png" alt="STAR Gestiones y Servicios">
     <div class="brand-copy">
-      <div class="eyebrow">STAR Siniestros <span class="commercial-badge">COMERCIAL</span> · v0.13.3</div>
+      <div class="eyebrow">STAR Siniestros <span class="commercial-badge">COMERCIAL</span> · v0.13.4</div>
       <h1 id="appTitle">Asistente de Siniestros</h1>
       <p>Ingresá el relato y, si corresponde, los daños. Nada queda guardado.</p>
     </div>
@@ -149,7 +158,7 @@
 <div id="canvasWrap"><svg id="croquisSvg" viewBox="0 0 1120 560" aria-label="Editor de croquis"></svg></div>
 </article>
 </section>
-<footer class="app-footer">STAR Gestiones y Servicios · Asistente de Siniestros Comercial v0.13.3</footer>
+<footer class="app-footer">STAR Gestiones y Servicios · Asistente de Siniestros Comercial v0.13.4</footer>
 </main><script src="/auth.js"></script><script src="/app.js"></script><script src="/v010.js"></script><script src="/v011.js"></script>
 <script src="/v012.js"></script>
 </body></html>
