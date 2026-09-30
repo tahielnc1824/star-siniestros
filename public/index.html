@@ -21,6 +21,13 @@
       <button id="authSubmit" class="primary" type="submit">Ingresar</button>
       <button id="forgotPassword" class="auth-link" type="button">¿Olvidaste tu contraseña?</button>
     </form>
+    <div id="forgotPasswordBox" class="auth-form hidden">
+      <label>Email
+        <input id="forgotEmail" type="email" autocomplete="email" placeholder="tu@email.com">
+      </label>
+      <button id="forgotSubmit" class="primary" type="button">Enviar enlace de recuperación</button>
+      <button id="forgotCancel" class="auth-link" type="button">Volver al inicio de sesión</button>
+    </div>
     <div id="resetPasswordBox" class="auth-form hidden">
       <label>Nueva contraseña
         <input id="resetPassword" type="password" autocomplete="new-password" minlength="6" placeholder="••••••••">
@@ -40,7 +47,7 @@
   <div class="brand-main">
     <img class="brand-logo" src="/logo-star.png" alt="STAR Gestiones y Servicios">
     <div class="brand-copy">
-      <div class="eyebrow">STAR Siniestros <span class="commercial-badge">COMERCIAL</span> · v0.13.1</div>
+      <div class="eyebrow">STAR Siniestros <span class="commercial-badge">COMERCIAL</span> · v0.13.2</div>
       <h1 id="appTitle">Asistente de Siniestros</h1>
       <p>Ingresá el relato y, si corresponde, los daños. Nada queda guardado.</p>
     </div>
@@ -142,7 +149,7 @@
 <div id="canvasWrap"><svg id="croquisSvg" viewBox="0 0 1120 560" aria-label="Editor de croquis"></svg></div>
 </article>
 </section>
-<footer class="app-footer">STAR Gestiones y Servicios · Asistente de Siniestros Comercial v0.13.1</footer>
+<footer class="app-footer">STAR Gestiones y Servicios · Asistente de Siniestros Comercial v0.13.2</footer>
 </main><script src="/auth.js"></script><script src="/app.js"></script><script src="/v010.js"></script><script src="/v011.js"></script>
 <script src="/v012.js"></script>
 </body></html>
