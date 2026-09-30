@@ -2,6 +2,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createClient } from '@supabase/supabase-js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, 'public');
@@ -29,6 +30,7 @@ const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/$/,'');
 const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || '';
 const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY || '';
 const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+const supabaseAdmin = SUPABASE_URL && SUPABASE_SECRET_KEY ? createClient(SUPABASE_URL, SUPABASE_SECRET_KEY, { auth: { autoRefreshToken:false, persistSession:false, detectSessionInUrl:false } }) : null;
 
 function isAdminUser(user){
   return String(user?.email||'').trim().toLowerCase()===ADMIN_EMAIL;
@@ -480,7 +482,7 @@ function serveStatic(req,res){
 
 const server=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&req.url==='/health'){
-    return sendJson(res,200,{ok:true,version:'0.14.0-commercial',time:new Date().toISOString()});
+    return sendJson(res,200,{ok:true,version:'0.14.1-commercial',time:new Date().toISOString()});
   }
   if(req.method==='GET'&&req.url==='/api/public-config'){
     return sendJson(res,200,{supabaseUrl:SUPABASE_URL,supabasePublishableKey:SUPABASE_PUBLISHABLE_KEY});
@@ -493,6 +495,41 @@ const server=http.createServer(async(req,res)=>{
       email:user.email||'',
       role:email&&ADMIN_EMAIL&&email===ADMIN_EMAIL?'admin':'user'
     });
+  }
+  if(req.method==='GET'&&req.url==='/api/admin/users'){
+    const user=await requireUser(req,res); if(!user)return;
+    if(!isAdminUser(user))return sendJson(res,403,{error:'No tenés permisos de administrador.'});
+    if(!supabaseAdmin)return sendJson(res,500,{error:'Supabase no está configurado para administración.'});
+    const {data,error}=await supabaseAdmin.auth.admin.listUsers({page:1,perPage:200});
+    if(error)return sendJson(res,500,{error:'No se pudieron cargar los usuarios.'});
+    const users=(data?.users||[]).map(u=>({
+      id:u.id,
+      email:u.email||'',
+      created_at:u.created_at||null,
+      last_sign_in_at:u.last_sign_in_at||null,
+      email_confirmed_at:u.email_confirmed_at||u.confirmed_at||null,
+      banned_until:u.banned_until||null,
+      is_admin:String(u.email||'').trim().toLowerCase()===ADMIN_EMAIL
+    }));
+    return sendJson(res,200,{users,total:users.length});
+  }
+  if(req.method==='POST'&&req.url==='/api/admin/users/status'){
+    const user=await requireUser(req,res); if(!user)return;
+    if(!isAdminUser(user))return sendJson(res,403,{error:'No tenés permisos de administrador.'});
+    if(!supabaseAdmin)return sendJson(res,500,{error:'Supabase no está configurado para administración.'});
+    let body=''; for await(const chunk of req){body+=chunk;if(body.length>20_000)throw new Error('Solicitud demasiado grande');}
+    const data=JSON.parse(body||'{}');
+    const id=String(data.id||'').trim();
+    const enabled=Boolean(data.enabled);
+    if(!id)return sendJson(res,400,{error:'Falta identificar al usuario.'});
+    const {data:target,error:getError}=await supabaseAdmin.auth.admin.getUserById(id);
+    if(getError||!target?.user)return sendJson(res,404,{error:'No se encontró el usuario.'});
+    if(String(target.user.email||'').trim().toLowerCase()===ADMIN_EMAIL){
+      return sendJson(res,400,{error:'La cuenta administradora principal no se puede suspender.'});
+    }
+    const {error:updateError}=await supabaseAdmin.auth.admin.updateUserById(id,{ban_duration:enabled?'none':'876000h'});
+    if(updateError)return sendJson(res,500,{error:'No se pudo actualizar el usuario.'});
+    return sendJson(res,200,{ok:true,enabled});
   }
   if(req.method==='GET'&&(req.url==='/'||req.url==='/index.html')){
     console.log('[HTTP]',req.method,req.url,new Date().toISOString());
@@ -594,4 +631,4 @@ ${JSON.stringify(escena,null,2)}`;
 server.keepAliveTimeout=65_000;
 server.headersTimeout=66_000;
 server.requestTimeout=120_000;
-server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros comercial v0.14.0: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
+server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros comercial v0.14.1: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
