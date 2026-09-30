@@ -2,7 +2,7 @@
   const $ = id => document.getElementById(id);
   const gate=$('authGate'), shell=$('appShell'), form=$('authForm'), email=$('authEmail'), pass=$('authPassword'),
     submit=$('authSubmit'), msg=$('authMessage'), toggle=$('authModeToggle'), title=$('authTitle'), subtitle=$('authSubtitle'),
-    userEmail=$('sessionEmail'), logout=$('logoutBtn'), forgot=$('forgotPassword'), forgotBox=$('forgotPasswordBox'),
+    userEmail=$('sessionEmail'), adminBadge=$('adminBadge'), logout=$('logoutBtn'), forgot=$('forgotPassword'), forgotBox=$('forgotPasswordBox'),
     forgotEmail=$('forgotEmail'), forgotSubmit=$('forgotSubmit'), forgotCancel=$('forgotCancel'), resetBox=$('resetPasswordBox'),
     resetPass=$('resetPassword'), resetConfirm=$('resetPasswordConfirm'), resetSubmit=$('resetPasswordSubmit'), resetCancel=$('resetPasswordCancel');
 
@@ -88,16 +88,30 @@
     r=await supa('/auth/v1/user',{headers:{Authorization:'Bearer '+fresh.access_token}});
     return r.ok?fresh:null;
   }
+  async function loadAccountRole(){
+    try{
+      const r=await fetch('/api/me');
+      if(!r.ok)return;
+      const data=await r.json();
+      const isAdmin=data?.role==='admin';
+      adminBadge?.classList.toggle('hidden',!isAdmin);
+      document.body.dataset.role=isAdmin?'admin':'user';
+    }catch{}
+  }
   function enterApp(s){
     session=s;
     gate.classList.add('hidden');
     shell.classList.remove('hidden');
     userEmail.textContent=s?.user?.email||email.value||'Usuario';
+    adminBadge?.classList.add('hidden');
+    loadAccountRole();
   }
   function enterGate(){
     shell.classList.add('hidden');
     gate.classList.remove('hidden');
     userEmail.textContent='';
+    adminBadge?.classList.add('hidden');
+    delete document.body.dataset.role;
   }
   function sessionFromHash(){
     if(!location.hash||!location.hash.includes('access_token='))return null;
