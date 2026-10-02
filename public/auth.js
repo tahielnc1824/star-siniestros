@@ -7,6 +7,9 @@
     adminStatus=$('adminStatus'), adminSearch=$('adminSearch'), adminRefresh=$('adminRefresh'), adminUsersBody=$('adminUsersBody'),
     accountNotice=$('accountNotice'), accountNoticeText=$('accountNoticeText'),
     commercialModal=$('commercialModal'), commercialModalTitle=$('commercialModalTitle'), commercialModalText=$('commercialModalText'), commercialModalAccept=$('commercialModalAccept'),
+    legalAcceptRow=$('legalAcceptRow'), acceptLegal=$('acceptLegal'), adminVersion=$('adminVersion'), adminFooterVersion=$('adminFooterVersion'),
+    legalModal=$('legalModal'), legalModalTitle=$('legalModalTitle'), legalModalClose=$('legalModalClose'), legalModalAccept=$('legalModalAccept'),
+    legalTerms=$('legalTerms'), legalPrivacy=$('legalPrivacy'),
     logout=$('logoutBtn'), forgot=$('forgotPassword'), forgotBox=$('forgotPasswordBox'),
     forgotEmail=$('forgotEmail'), forgotSubmit=$('forgotSubmit'), forgotCancel=$('forgotCancel'), resetBox=$('resetPasswordBox'),
     resetPass=$('resetPassword'), resetConfirm=$('resetPasswordConfirm'), resetSubmit=$('resetPasswordSubmit'), resetCancel=$('resetPasswordCancel');
@@ -51,6 +54,8 @@
     submit.textContent=signup?'Crear cuenta':'Ingresar';
     toggle.textContent=signup?'Ya tengo cuenta':'Crear una cuenta';
     forgot?.classList.toggle('hidden',signup);
+    legalAcceptRow?.classList.toggle('hidden',!signup);
+    if(!signup && acceptLegal)acceptLegal.checked=false;
     showMessage('');
   }
   function saveSession(s){
@@ -101,6 +106,8 @@
       const isAdmin=data?.role==='admin';
       const account=data?.account||{};
       adminPanelBtn?.classList.toggle('hidden',!isAdmin);
+      adminVersion?.classList.toggle('hidden',!isAdmin);
+      adminFooterVersion?.classList.toggle('hidden',!isAdmin);
       document.body.dataset.role=isAdmin?'admin':'user';
 
       if(isAdmin){
@@ -140,6 +147,8 @@
     gate.classList.remove('hidden');
     userEmail.textContent='';
     adminPanelBtn?.classList.add('hidden');
+    adminVersion?.classList.add('hidden');
+    adminFooterVersion?.classList.add('hidden');
     usagePill?.classList.add('hidden');
     adminPanel?.classList.add('hidden');
     accountNotice?.classList.add('hidden');
@@ -213,8 +222,23 @@
     showMessage('');
     try{
       if(mode==='signup'){
+        if(!acceptLegal?.checked){
+          showMessage('Para crear la cuenta tenés que aceptar los Términos de Uso y la Política de Privacidad.','error');
+          return;
+        }
         const redirectTo=location.origin+'/';
-        const r=await supa('/auth/v1/signup?redirect_to='+encodeURIComponent(redirectTo),{method:'POST',body:JSON.stringify({email:mail,password})});
+        const r=await supa('/auth/v1/signup?redirect_to='+encodeURIComponent(redirectTo),{
+          method:'POST',
+          body:JSON.stringify({
+            email:mail,
+            password,
+            data:{
+              accepted_terms:true,
+              accepted_terms_version:'2026-10-02',
+              accepted_terms_at:new Date().toISOString()
+            }
+          })
+        });
         const data=await r.json();
         if(!r.ok){
           const raw=data?.msg||data?.message||data?.error_description||'';
@@ -527,6 +551,29 @@
     saveSession(null);session=null;enterGate();pass.value='';showMessage('Sesión cerrada.');
   });
 
+  function openLegal(kind){
+    if(!legalModal)return;
+    const privacy=kind==='privacy';
+    legalModalTitle.textContent=privacy?'Política de Privacidad':'Términos de Uso';
+    legalTerms?.classList.toggle('hidden',privacy);
+    legalPrivacy?.classList.toggle('hidden',!privacy);
+    legalModal.classList.remove('hidden');
+    setTimeout(()=>legalModalAccept?.focus(),0);
+  }
+
+  function closeLegal(){
+    legalModal?.classList.add('hidden');
+  }
+
+  document.querySelectorAll('[data-legal-open]').forEach(btn=>{
+    btn.addEventListener('click',()=>openLegal(btn.dataset.legalOpen));
+  });
+  legalModalClose?.addEventListener('click',closeLegal);
+  legalModalAccept?.addEventListener('click',closeLegal);
+  legalModal?.addEventListener('click',event=>{
+    if(event.target===legalModal)closeLegal();
+  });
+
   function closeCommercialModal(){
     commercialModal?.classList.add('hidden');
   }
@@ -544,7 +591,9 @@
     if(event.target===commercialModal)closeCommercialModal();
   });
   document.addEventListener('keydown',event=>{
-    if(event.key==='Escape'&&!commercialModal?.classList.contains('hidden'))closeCommercialModal();
+    if(event.key!=='Escape')return;
+    if(!commercialModal?.classList.contains('hidden'))closeCommercialModal();
+    if(!legalModal?.classList.contains('hidden'))closeLegal();
   });
 
   const nativeFetch=window.fetch.bind(window);
