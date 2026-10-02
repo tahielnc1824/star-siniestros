@@ -23,6 +23,10 @@
       </label>
       <button id="authSubmit" class="primary" type="submit">Ingresar</button>
       <button id="forgotPassword" class="auth-link" type="button">¿Olvidaste tu contraseña?</button>
+      <label id="legalAcceptRow" class="legal-accept hidden">
+        <input id="acceptLegal" type="checkbox">
+        <span>Acepto los <button class="legal-inline-link" type="button" data-legal-open="terms">Términos de Uso</button> y la <button class="legal-inline-link" type="button" data-legal-open="privacy">Política de Privacidad</button>.</span>
+      </label>
     </form>
     <div id="forgotPasswordBox" class="auth-form hidden">
       <label>Email
@@ -56,7 +60,7 @@
   <div class="brand-main">
     <img class="brand-logo" src="/logo-star.png" alt="STAR Gestiones y Servicios">
     <div class="brand-copy">
-      <div class="eyebrow">STAR Siniestros <span class="commercial-badge">COMERCIAL</span> · v0.15.3</div>
+      <div class="eyebrow">STAR Siniestros <span class="commercial-badge">COMERCIAL</span><span id="adminVersion" class="admin-version hidden"> · v0.15.4</span></div>
       <h1 id="appTitle">Asistente de Siniestros</h1>
       <p>Ingresá el relato y, si corresponde, los daños. Nada queda guardado.</p>
     </div>
@@ -199,7 +203,15 @@
 <div id="canvasWrap"><svg id="croquisSvg" viewBox="0 0 1120 560" aria-label="Editor de croquis"></svg></div>
 </article>
 </section>
-<footer class="app-footer">STAR Gestiones y Servicios · Asistente de Siniestros Comercial v0.15.3</footer>
+<footer class="app-footer">
+  <span>STAR Gestiones y Servicios · Asistente de Siniestros</span>
+  <span class="footer-links">
+    <button type="button" data-legal-open="terms">Términos de Uso</button>
+    <span>·</span>
+    <button type="button" data-legal-open="privacy">Política de Privacidad</button>
+    <span id="adminFooterVersion" class="hidden">· v0.15.4</span>
+  </span>
+</footer>
 </main>
 <div id="commercialModal" class="commercial-modal hidden" role="dialog" aria-modal="true" aria-labelledby="commercialModalTitle">
   <div class="commercial-modal-card">
@@ -208,6 +220,64 @@
     <button id="commercialModalAccept" class="primary" type="button">Aceptar</button>
   </div>
 </div>
+
+<div id="legalModal" class="legal-modal hidden" role="dialog" aria-modal="true" aria-labelledby="legalModalTitle">
+  <div class="legal-modal-card">
+    <div class="legal-modal-head">
+      <h2 id="legalModalTitle">Términos de Uso</h2>
+      <button id="legalModalClose" class="legal-close" type="button" aria-label="Cerrar">×</button>
+    </div>
+    <div id="legalTerms" class="legal-document">
+      <p class="legal-updated">Última actualización: 2 de octubre de 2026.</p>
+      <h3>1. Objeto del servicio</h3>
+      <p>STAR Siniestros es una herramienta digital de asistencia para la gestión de siniestros de seguros. Permite organizar relatos, generar observaciones, elaborar croquis orientativos y analizar información de pólizas mediante herramientas automatizadas e inteligencia artificial.</p>
+      <h3>2. Alcance profesional</h3>
+      <p>La plataforma funciona como herramienta de apoyo. Sus resultados no constituyen asesoramiento jurídico, dictamen de cobertura, liquidación de siniestros ni decisión de una compañía aseguradora. El usuario debe revisar la información antes de utilizarla profesionalmente.</p>
+      <h3>3. Cuentas y acceso</h3>
+      <p>Cada usuario es responsable de la confidencialidad de sus credenciales y de las operaciones realizadas desde su cuenta. STAR Siniestros puede habilitar, limitar, suspender o finalizar accesos cuando existan incumplimientos, vencimientos, falta de pago, uso abusivo o riesgos de seguridad.</p>
+      <h3>4. Usos y límites</h3>
+      <p>El acceso puede estar sujeto a una cantidad determinada de usos por período. Un uso se computa cuando una operación de inteligencia artificial se completa correctamente. Los límites, renovaciones y vencimientos son administrados según las condiciones acordadas con cada usuario.</p>
+      <h3>5. Uso permitido</h3>
+      <p>El usuario se compromete a utilizar la plataforma de forma lícita, profesional y de buena fe. No debe intentar vulnerar la seguridad, automatizar solicitudes abusivas, compartir accesos de forma no autorizada ni utilizar la plataforma para alterar, ocultar o inventar hechos de un siniestro.</p>
+      <h3>6. Información ingresada</h3>
+      <p>El usuario es responsable de contar con una base legítima para ingresar información personal o documentación de asegurados, terceros u otras personas. Debe evitar incorporar datos innecesarios para la finalidad del análisis.</p>
+      <h3>7. Disponibilidad</h3>
+      <p>Se procura mantener el servicio disponible y operativo, pero pueden existir interrupciones por mantenimiento, fallas de proveedores, actualizaciones o causas fuera del control razonable de STAR Siniestros.</p>
+      <h3>8. Propiedad intelectual</h3>
+      <p>La aplicación, su diseño, lógica, marca, interfaz y componentes propios pertenecen a sus titulares. El usuario conserva la responsabilidad sobre la información que incorpora y sobre el uso de los resultados obtenidos.</p>
+      <h3>9. Limitación de responsabilidad</h3>
+      <p>La plataforma puede producir resultados incompletos o inexactos. El usuario debe aplicar criterio profesional y verificar especialmente coberturas, exclusiones, datos de póliza, responsabilidades y cualquier información relevante antes de actuar.</p>
+      <h3>10. Cambios</h3>
+      <p>Estos términos pueden actualizarse cuando cambien el servicio, sus funciones o las condiciones comerciales. La versión vigente será la publicada dentro de la plataforma.</p>
+      <h3>11. Legislación aplicable</h3>
+      <p>El servicio se ofrece desde la República Argentina y estos términos se interpretan conforme a la normativa argentina aplicable.</p>
+    </div>
+
+    <div id="legalPrivacy" class="legal-document hidden">
+      <p class="legal-updated">Última actualización: 2 de octubre de 2026.</p>
+      <h3>1. Qué información tratamos</h3>
+      <p>Podemos tratar el email de la cuenta, datos técnicos de acceso y consumo, y la información que el usuario decide ingresar para realizar un análisis, incluyendo relatos de siniestros, daños y archivos de póliza.</p>
+      <h3>2. Para qué se utiliza</h3>
+      <p>La información se utiliza para autenticar usuarios, prestar las funciones de la plataforma, controlar límites de uso, administrar accesos, prevenir abusos, resolver errores y mejorar la operación del servicio.</p>
+      <h3>3. Contenido de siniestros y pólizas</h3>
+      <p>STAR Siniestros no ofrece un historial permanente de los análisis realizados. El contenido ingresado se procesa para responder la solicitud en curso. Las solicitudes enviadas a OpenAI se realizan con almacenamiento de respuestas desactivado mediante <strong>store:false</strong>.</p>
+      <h3>4. Proveedores tecnológicos</h3>
+      <p>Para operar el servicio se utilizan proveedores tecnológicos, entre ellos Supabase para autenticación y gestión de cuentas, Render para infraestructura, Resend para correos transaccionales y OpenAI para funciones de inteligencia artificial. Estos proveedores procesan información únicamente en la medida necesaria para prestar sus respectivos servicios.</p>
+      <h3>5. Datos de cuenta y consumo</h3>
+      <p>Se conservan los datos necesarios para gestionar la cuenta, su habilitación, vencimiento, límites y cantidad de usos. Esta información puede mantenerse mientras la cuenta esté activa y durante el tiempo razonablemente necesario para fines administrativos, de seguridad o cumplimiento.</p>
+      <h3>6. Seguridad</h3>
+      <p>Se aplican medidas razonables para restringir el acceso administrativo, proteger credenciales y evitar usos no autorizados. Ningún sistema conectado a Internet puede garantizar seguridad absoluta.</p>
+      <h3>7. Derechos del usuario</h3>
+      <p>El titular de los datos puede solicitar, según corresponda, acceso, actualización, rectificación o eliminación de información personal tratada por la plataforma, conforme a la normativa argentina aplicable.</p>
+      <h3>8. Datos de terceros</h3>
+      <p>Cuando un usuario carga información de asegurados, terceros o cualquier otra persona, es responsable de utilizar únicamente la información necesaria y de contar con una base legítima para su tratamiento.</p>
+      <h3>9. Cambios en esta política</h3>
+      <p>Esta política puede actualizarse para reflejar cambios técnicos, funcionales, comerciales o normativos. La versión vigente será la publicada dentro de STAR Siniestros.</p>
+    </div>
+    <div class="legal-modal-actions"><button id="legalModalAccept" class="primary" type="button">Cerrar</button></div>
+  </div>
+</div>
+
 <script src="/auth.js"></script><script src="/app.js"></script><script src="/v010.js"></script><script src="/v011.js"></script>
 <script src="/v012.js"></script>
 </body></html>
