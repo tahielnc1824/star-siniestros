@@ -5,6 +5,7 @@
     userEmail=$('sessionEmail'), adminBadge=$('adminBadge'), adminPanelBtn=$('adminPanelBtn'), adminPanel=$('adminPanel'),
     adminClose=$('adminClose'), adminTotal=$('adminTotal'), adminConfirmed=$('adminConfirmed'), adminEnabled=$('adminEnabled'),
     adminStatus=$('adminStatus'), adminSearch=$('adminSearch'), adminRefresh=$('adminRefresh'), adminUsersBody=$('adminUsersBody'),
+    accountNotice=$('accountNotice'), accountNoticeTitle=$('accountNoticeTitle'), accountNoticeText=$('accountNoticeText'), accountUsage=$('accountUsage'),
     logout=$('logoutBtn'), forgot=$('forgotPassword'), forgotBox=$('forgotPasswordBox'),
     forgotEmail=$('forgotEmail'), forgotSubmit=$('forgotSubmit'), forgotCancel=$('forgotCancel'), resetBox=$('resetPasswordBox'),
     resetPass=$('resetPassword'), resetConfirm=$('resetPasswordConfirm'), resetSubmit=$('resetPasswordSubmit'), resetCancel=$('resetPasswordCancel');
@@ -97,9 +98,31 @@
       if(!r.ok)return;
       const data=await r.json();
       const isAdmin=data?.role==='admin';
+      const account=data?.account||{};
       adminBadge?.classList.toggle('hidden',!isAdmin);
       adminPanelBtn?.classList.toggle('hidden',!isAdmin);
       document.body.dataset.role=isAdmin?'admin':'user';
+
+      const status=isAdmin?'active':String(account.status||'pending');
+      document.body.dataset.accountStatus=status;
+
+      if(isAdmin){
+        accountNotice?.classList.add('hidden');
+      }else{
+        accountNotice?.classList.remove('hidden');
+        const labels={pending:'Pendiente de aprobación',active:'Cuenta habilitada',suspended:'Cuenta suspendida',inactive:'Cuenta inactiva'};
+        accountNoticeTitle.textContent=labels[status]||'Estado de tu cuenta';
+        if(status==='pending') accountNoticeText.textContent='Tu cuenta ya fue creada y confirmada. Un administrador debe habilitarla antes de que puedas usar las herramientas.';
+        else if(status==='suspended') accountNoticeText.textContent='Tu acceso está suspendido. Contactá al administrador para revisarlo.';
+        else if(status==='inactive') accountNoticeText.textContent='Tu cuenta no está habilitada actualmente.';
+        else accountNoticeText.textContent='Tu cuenta está habilitada para usar STAR Siniestros.';
+
+        const limit=Number(account.monthly_limit||0);
+        const used=Number(account.usage_count||0);
+        const expiry=account.expires_at?adminFormatDate(account.expires_at):'Sin vencimiento';
+        accountUsage.innerHTML='<strong>Plan: '+String(account.plan||'prueba')+'</strong><span>Uso del mes: '+used+(limit>0?' / '+limit:' / Sin límite')+'</span><span>Vencimiento: '+expiry+'</span>';
+        accountUsage.classList.toggle('hidden',status!=='active');
+      }
     }catch{}
   }
   function enterApp(s){
@@ -117,7 +140,9 @@
     adminBadge?.classList.add('hidden');
     adminPanelBtn?.classList.add('hidden');
     adminPanel?.classList.add('hidden');
+    accountNotice?.classList.add('hidden');
     delete document.body.dataset.role;
+    delete document.body.dataset.accountStatus;
   }
   function sessionFromHash(){
     if(!location.hash||!location.hash.includes('access_token='))return null;
@@ -307,25 +332,45 @@
 
     adminTotal.textContent=adminUsers.length;
     adminConfirmed.textContent=adminUsers.filter(u=>u.email_confirmed_at).length;
-    adminEnabled.textContent=adminUsers.filter(u=>!adminIsSuspended(u)).length;
+    adminEnabled.textContent=adminUsers.filter(u=>u.commercial_status==='active'&&!adminIsSuspended(u)).length;
 
     if(!list.length){
-      adminUsersBody.innerHTML='<tr><td colspan="6" class="admin-empty">No hay usuarios para mostrar.</td></tr>';
+      adminUsersBody.innerHTML='<tr><td colspan="7" class="admin-empty">No hay usuarios para mostrar.</td></tr>';
       return;
     }
 
     adminUsersBody.innerHTML=list.map(u=>{
+      const admin=Boolean(u.is_admin);
       const suspended=adminIsSuspended(u);
-      const status=suspended?'Suspendido':(u.email_confirmed_at?'Activo':'Sin confirmar');
-      const role=u.is_admin?'Administrador':'Usuario';
-      const action=u.is_admin?'—':'<button class="ghost small admin-user-action" data-id="'+u.id+'" data-enable="'+(suspended?'true':'false')+'">'+(suspended?'Reactivar':'Suspender')+'</button>';
+      const status=admin?'Administrador':(suspended?'Suspendido':String(u.commercial_status||'pending'));
+      const usage=admin?'Sin límite':String(Number(u.commercial_usage_count||0))+' / '+(Number(u.commercial_monthly_limit||0)>0?Number(u.commercial_monthly_limit):'∞');
+      const expiry=admin?'—':(u.commercial_expires_at?adminFormatDate(u.commercial_expires_at):'Sin vencimiento');
+      const controls=admin?'—':
+        '<div class="admin-manage" data-id="'+u.id+'">'+
+          '<select class="admin-status-select">'+
+            '<option value="pending" '+(u.commercial_status==='pending'?'selected':'')+'>Pendiente</option>'+
+            '<option value="active" '+(u.commercial_status==='active'?'selected':'')+'>Activo</option>'+
+            '<option value="suspended" '+(u.commercial_status==='suspended'?'selected':'')+'>Suspendido</option>'+
+            '<option value="inactive" '+(u.commercial_status==='inactive'?'selected':'')+'>Inactivo</option>'+
+          '</select>'+
+          '<select class="admin-plan-select">'+
+            '<option value="prueba" '+(u.commercial_plan==='prueba'?'selected':'')+'>Prueba</option>'+
+            '<option value="basico" '+(u.commercial_plan==='basico'?'selected':'')+'>Básico</option>'+
+            '<option value="pro" '+(u.commercial_plan==='pro'?'selected':'')+'>Pro</option>'+
+            '<option value="personalizado" '+(u.commercial_plan==='personalizado'?'selected':'')+'>Personalizado</option>'+
+          '</select>'+
+          '<input class="admin-limit-input" type="number" min="0" max="100000" value="'+Number(u.commercial_monthly_limit||0)+'" title="Límite mensual">'+
+          '<input class="admin-expiry-input" type="date" value="'+(u.commercial_expires_at?String(u.commercial_expires_at).slice(0,10):'')+'" title="Vencimiento">'+
+          '<button class="primary small admin-save-user">Guardar</button>'+
+        '</div>';
       return '<tr>'+
         '<td><strong>'+String(u.email||'Sin email')+'</strong></td>'+
-        '<td>'+role+'</td>'+
         '<td>'+status+'</td>'+
-        '<td>'+adminFormatDate(u.created_at)+'</td>'+
+        '<td>'+String(u.commercial_plan||'prueba')+'</td>'+
+        '<td>'+usage+'</td>'+
+        '<td>'+expiry+'</td>'+
         '<td>'+adminFormatDate(u.last_sign_in_at)+'</td>'+
-        '<td>'+action+'</td>'+
+        '<td>'+controls+'</td>'+
       '</tr>';
     }).join('');
   }
@@ -352,24 +397,34 @@
   adminRefresh?.addEventListener('click',loadAdminSummary);
 
   adminUsersBody?.addEventListener('click',async event=>{
-    const button=event.target.closest('.admin-user-action');
+    const button=event.target.closest('.admin-save-user');
     if(!button)return;
-    const id=button.dataset.id;
-    const enabled=button.dataset.enable==='true';
+    const wrap=button.closest('.admin-manage');
+    if(!wrap)return;
+    const id=wrap.dataset.id;
+    const status=wrap.querySelector('.admin-status-select')?.value||'pending';
+    const plan=wrap.querySelector('.admin-plan-select')?.value||'prueba';
+    const monthly_limit=Number(wrap.querySelector('.admin-limit-input')?.value||0);
+    const expires_at=wrap.querySelector('.admin-expiry-input')?.value||null;
+
     button.disabled=true;
-    adminStatus.textContent=enabled?'Reactivando usuario…':'Suspendiendo usuario…';
+    button.textContent='Guardando…';
+    adminStatus.textContent='Actualizando usuario…';
     try{
-      const r=await fetch('/api/admin/users/status',{
+      const r=await fetch('/api/admin/users/profile',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({id,enabled})
+        body:JSON.stringify({id,status,plan,monthly_limit,expires_at})
       });
       const data=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(data.error||'No se pudo actualizar el usuario.');
       await loadAdminSummary();
+      adminStatus.textContent='Usuario actualizado.';
+      setTimeout(()=>{if(adminStatus.textContent==='Usuario actualizado.')adminStatus.textContent=''},1600);
     }catch(err){
       adminStatus.textContent=err.message||'No se pudo actualizar el usuario.';
       button.disabled=false;
+      button.textContent='Guardar';
     }
   });
 
