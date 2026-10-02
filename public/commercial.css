@@ -176,3 +176,30 @@ body[data-account-status="expired"] #resultado{display:none!important}
   .brand-logo{width:112px}
   .brand-copy h1{font-size:26px}
 }
+
+.usage-pill.low{border-color:#efd69b;background:#fff8e8;color:#8a6100}
+.usage-pill.empty{border-color:#e6c2bf;background:#fff4f3;color:#a12b22}
+
+.commercial-modal{
+  position:fixed;
+  inset:0;
+  z-index:10000;
+  display:grid;
+  place-items:center;
+  padding:20px;
+  background:rgba(14,38,56,.42);
+  backdrop-filter:blur(2px)
+}
+.commercial-modal.hidden{display:none}
+.commercial-modal-card{
+  width:min(420px,100%);
+  background:#fff;
+  border:1px solid #d5e4ed;
+  border-radius:16px;
+  padding:26px;
+  box-shadow:0 24px 70px rgba(11,49,73,.24);
+  text-align:center
+}
+.commercial-modal-card h2{font-size:21px;margin-bottom:9px}
+.commercial-modal-card p{font-size:14px;line-height:1.55;margin-bottom:20px}
+.commercial-modal-card .primary{min-width:120px}
