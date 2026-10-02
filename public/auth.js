@@ -6,6 +6,7 @@
     adminClose=$('adminClose'), adminTotal=$('adminTotal'), adminConfirmed=$('adminConfirmed'), adminEnabled=$('adminEnabled'),
     adminStatus=$('adminStatus'), adminSearch=$('adminSearch'), adminRefresh=$('adminRefresh'), adminUsersBody=$('adminUsersBody'),
     accountNotice=$('accountNotice'), accountNoticeText=$('accountNoticeText'),
+    commercialModal=$('commercialModal'), commercialModalTitle=$('commercialModalTitle'), commercialModalText=$('commercialModalText'), commercialModalAccept=$('commercialModalAccept'),
     logout=$('logoutBtn'), forgot=$('forgotPassword'), forgotBox=$('forgotPasswordBox'),
     forgotEmail=$('forgotEmail'), forgotSubmit=$('forgotSubmit'), forgotCancel=$('forgotCancel'), resetBox=$('resetPasswordBox'),
     resetPass=$('resetPassword'), resetConfirm=$('resetPasswordConfirm'), resetSubmit=$('resetPasswordSubmit'), resetCancel=$('resetPasswordCancel');
@@ -123,6 +124,8 @@
       const remaining=limit>0?Math.max(0,limit-used):null;
       usagePill.textContent=remaining===null?'Usos sin límite':remaining+' usos disponibles';
       usagePill.classList.remove('hidden');
+      usagePill.classList.toggle('low',remaining!==null&&remaining<=5);
+      usagePill.classList.toggle('empty',remaining===0);
     }catch{}
   }
   function enterApp(s){
@@ -468,6 +471,26 @@
     saveSession(null);session=null;enterGate();pass.value='';showMessage('Sesión cerrada.');
   });
 
+  function closeCommercialModal(){
+    commercialModal?.classList.add('hidden');
+  }
+
+  function showCommercialModal(title,text){
+    if(!commercialModal)return;
+    commercialModalTitle.textContent=title||'Aviso';
+    commercialModalText.textContent=text||'';
+    commercialModal.classList.remove('hidden');
+    setTimeout(()=>commercialModalAccept?.focus(),0);
+  }
+
+  commercialModalAccept?.addEventListener('click',closeCommercialModal);
+  commercialModal?.addEventListener('click',event=>{
+    if(event.target===commercialModal)closeCommercialModal();
+  });
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&!commercialModal?.classList.contains('hidden'))closeCommercialModal();
+  });
+
   const nativeFetch=window.fetch.bind(window);
   window.fetch=async function(input,init={}){
     const url=typeof input==='string'?input:(input?.url||'');
@@ -480,6 +503,18 @@
       }
     }
     const res=await nativeFetch(input,init);
+    if(['/api/analizar','/api/analizar-poliza','/api/corregir-croquis'].includes(url) && !res.ok){
+      try{
+        const data=await res.clone().json();
+        if(data?.code==='USAGE_LIMIT'){
+          showCommercialModal('Sin usos disponibles','Ya utilizaste todos los usos disponibles de este período. Contactá al administrador para ampliar o renovar tu acceso.');
+          loadAccountRole();
+        }else if(String(data?.code||'').startsWith('ACCOUNT_')){
+          showCommercialModal('Acceso no disponible',data?.error||'Tu cuenta no está habilitada para realizar esta operación.');
+          loadAccountRole();
+        }
+      }catch{}
+    }
     if(res.ok && ['/api/analizar','/api/analizar-poliza','/api/corregir-croquis'].includes(url)){
       setTimeout(()=>loadAccountRole(),50);
     }
