@@ -583,12 +583,13 @@ const server=http.createServer(async(req,res)=>{
     const meta=commercialMeta(full);
     const month=currentUsageMonth();
     const used=meta.usage_month===month?meta.usage_count:0;
+    const expired=!isAdminUser(user)&&meta.expires_at&&new Date(meta.expires_at).getTime()<Date.now();
     return sendJson(res,200,{
       id:user.id,
       email:user.email||'',
       role:isAdminUser(user)?'admin':'user',
       account:{
-        status:meta.status,
+        status:expired?'expired':meta.status,
         plan:meta.plan,
         expires_at:meta.expires_at,
         monthly_limit:meta.monthly_limit,
