@@ -209,3 +209,92 @@ body[data-account-status="expired"] #resultado{display:none!important}
 .admin-usage-detail{margin-top:3px;font-size:11px;color:#7a8f9f;white-space:nowrap}
 .admin-manage{grid-template-columns:125px 100px 150px 135px auto auto auto;min-width:790px}
 .admin-renew-user,.admin-reset-user{white-space:nowrap}
+
+.legal-accept{
+  display:flex!important;
+  align-items:flex-start;
+  gap:9px;
+  font-size:12px;
+  line-height:1.45;
+  font-weight:600!important;
+  color:#60788a!important
+}
+.legal-accept.hidden{display:none!important}
+.legal-accept input{width:16px!important;height:16px;margin:2px 0 0;flex:0 0 auto}
+.legal-inline-link,.footer-links button{
+  border:0;
+  background:transparent;
+  padding:0;
+  color:var(--star-blue-dark);
+  font:inherit;
+  font-weight:700;
+  cursor:pointer;
+  text-decoration:underline
+}
+
+.admin-version{font-weight:700}
+.app-footer{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center
+}
+.footer-links{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap}
+
+.legal-modal{
+  position:fixed;
+  inset:0;
+  z-index:10001;
+  display:grid;
+  place-items:center;
+  padding:20px;
+  background:rgba(14,38,56,.48);
+  backdrop-filter:blur(2px)
+}
+.legal-modal.hidden{display:none}
+.legal-modal-card{
+  width:min(760px,100%);
+  max-height:min(86vh,900px);
+  display:flex;
+  flex-direction:column;
+  background:#fff;
+  border:1px solid #d5e4ed;
+  border-radius:18px;
+  box-shadow:0 24px 80px rgba(11,49,73,.28);
+  overflow:hidden
+}
+.legal-modal-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  padding:20px 24px 16px;
+  border-bottom:1px solid #e6eef3
+}
+.legal-modal-head h2{margin:0;font-size:22px}
+.legal-close{
+  width:34px;height:34px;border:0;border-radius:8px;background:#f0f6f9;
+  color:#17324a;font-size:22px;line-height:1;cursor:pointer
+}
+.legal-document{
+  overflow:auto;
+  padding:20px 24px;
+  color:#304a5d;
+  font-size:14px;
+  line-height:1.62
+}
+.legal-document h3{margin:18px 0 6px;color:#17324a;font-size:15px}
+.legal-document p{margin:0 0 10px}
+.legal-updated{font-size:12px;color:#7a8f9f}
+.legal-modal-actions{
+  display:flex;
+  justify-content:flex-end;
+  padding:14px 24px 20px;
+  border-top:1px solid #e6eef3
+}
+@media(max-width:620px){
+  .legal-modal{padding:10px}
+  .legal-modal-card{max-height:92vh}
+  .legal-modal-head,.legal-document,.legal-modal-actions{padding-left:16px;padding-right:16px}
+}
