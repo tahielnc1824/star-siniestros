@@ -861,4 +861,32 @@ ${JSON.stringify(escena,null,2)}`;
 server.keepAliveTimeout=65_000;
 server.headersTimeout=66_000;
 server.requestTimeout=120_000;
+
+async function oneTimeDeleteNonAdminUsers(){
+  if(!supabaseAdmin||!ADMIN_EMAIL){
+    console.log('Limpieza de usuarios omitida: falta configuración administrativa.');
+    return;
+  }
+  try{
+    const {data,error}=await supabaseAdmin.auth.admin.listUsers({page:1,perPage:1000});
+    if(error)throw error;
+    const users=data?.users||[];
+    let deleted=0;
+    for(const u of users){
+      const email=String(u.email||'').trim().toLowerCase();
+      if(email===ADMIN_EMAIL)continue;
+      const {error:deleteError}=await supabaseAdmin.auth.admin.deleteUser(u.id);
+      if(deleteError){
+        console.error('No se pudo borrar usuario',u.id,deleteError);
+      }else{
+        deleted++;
+      }
+    }
+    console.log(`Limpieza única completada. Usuarios eliminados: ${deleted}. Admin conservado: ${ADMIN_EMAIL}`);
+  }catch(err){
+    console.error('Error en limpieza única de usuarios',err);
+  }
+}
+
+await oneTimeDeleteNonAdminUsers();
 server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros comercial v0.15.4: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
