@@ -352,7 +352,14 @@
       const limit=Number(u.commercial_monthly_limit||0);
       const used=Number(u.commercial_usage_count||0);
       const remaining=limit>0?Math.max(0,limit-used):null;
-      const usage=admin?'Sin límite':(remaining===null?'Sin límite':remaining+' restantes ('+used+'/'+limit+')');
+      const breakdown=u.commercial_usage_breakdown||{};
+      const detail=admin?'':[
+        Number(breakdown.analisis||0)?'Siniestros '+Number(breakdown.analisis||0):'',
+        Number(breakdown.poliza||0)?'Pólizas '+Number(breakdown.poliza||0):'',
+        Number(breakdown.croquis||0)?'Croquis '+Number(breakdown.croquis||0):''
+      ].filter(Boolean).join(' · ');
+      const usage=admin?'Sin límite':(remaining===null?'Sin límite':remaining+' restantes');
+      const usageHtml='<div class="admin-usage-main">'+usage+(admin?'':' <span>('+used+'/'+(limit||'∞')+')</span>')+'</div>'+(detail?'<div class="admin-usage-detail">'+detail+'</div>':'');
       const expiry=admin?'—':(u.commercial_expires_at?adminFormatDate(u.commercial_expires_at):'Sin vencimiento');
       const existingDate=u.commercial_expires_at?String(u.commercial_expires_at).slice(0,10):'';
 
@@ -370,12 +377,14 @@
           '</select>'+
           '<input class="admin-expiry-input hidden" type="date" value="'+existingDate+'" title="Fecha de vencimiento">'+
           '<button class="primary small admin-save-user">Guardar</button>'+
+          '<button class="ghost small admin-renew-user" type="button">+30 días</button>'+
+          '<button class="ghost small admin-reset-user" type="button">Reiniciar usos</button>'+
         '</div>';
 
       return '<tr>'+
         '<td><strong>'+String(u.email||'Sin email')+'</strong></td>'+
         '<td><span class="admin-access '+(enabled?'on':'off')+'">'+(admin?'Administrador':(enabled?'Habilitado':'Deshabilitado'))+'</span></td>'+
-        '<td>'+usage+'</td>'+
+        '<td>'+usageHtml+'</td>'+
         '<td>'+expiry+'</td>'+
         '<td>'+adminFormatDate(u.last_sign_in_at)+'</td>'+
         '<td>'+controls+'</td>'+
@@ -414,11 +423,58 @@
   });
 
   adminUsersBody?.addEventListener('click',async event=>{
-    const button=event.target.closest('.admin-save-user');
+    const saveButton=event.target.closest('.admin-save-user');
+    const renewButton=event.target.closest('.admin-renew-user');
+    const resetButton=event.target.closest('.admin-reset-user');
+    const button=saveButton||renewButton||resetButton;
     if(!button)return;
     const wrap=button.closest('.admin-manage');
     if(!wrap)return;
     const id=wrap.dataset.id;
+
+    if(renewButton){
+      renewButton.disabled=true;
+      adminStatus.textContent='Renovando acceso por 30 días…';
+      try{
+        const r=await fetch('/api/admin/users/renew',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({id,days:30})
+        });
+        const data=await r.json().catch(()=>({}));
+        if(!r.ok)throw new Error(data.error||'No se pudo renovar el acceso.');
+        await loadAdminSummary();
+        adminStatus.textContent='Acceso renovado por 30 días.';
+        setTimeout(()=>{if(adminStatus.textContent==='Acceso renovado por 30 días.')adminStatus.textContent=''},1800);
+      }catch(err){
+        adminStatus.textContent=err.message||'No se pudo renovar el acceso.';
+        renewButton.disabled=false;
+      }
+      return;
+    }
+
+    if(resetButton){
+      if(!confirm('¿Reiniciar a cero los usos consumidos de este usuario?'))return;
+      resetButton.disabled=true;
+      adminStatus.textContent='Reiniciando usos…';
+      try{
+        const r=await fetch('/api/admin/users/reset-usage',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({id})
+        });
+        const data=await r.json().catch(()=>({}));
+        if(!r.ok)throw new Error(data.error||'No se pudieron reiniciar los usos.');
+        await loadAdminSummary();
+        adminStatus.textContent='Usos reiniciados.';
+        setTimeout(()=>{if(adminStatus.textContent==='Usos reiniciados.')adminStatus.textContent=''},1800);
+      }catch(err){
+        adminStatus.textContent=err.message||'No se pudieron reiniciar los usos.';
+        resetButton.disabled=false;
+      }
+      return;
+    }
+
     const enabled=Boolean(wrap.querySelector('.admin-enabled-input')?.checked);
     const status=enabled?'active':'inactive';
     const plan='personalizado';
@@ -435,8 +491,8 @@
       expires_at=raw?new Date(raw+'T23:59:59').toISOString():null;
     }
 
-    button.disabled=true;
-    button.textContent='Guardando…';
+    saveButton.disabled=true;
+    saveButton.textContent='Guardando…';
     adminStatus.textContent='Actualizando usuario…';
     try{
       const r=await fetch('/api/admin/users/profile',{
@@ -451,8 +507,8 @@
       setTimeout(()=>{if(adminStatus.textContent==='Usuario actualizado.')adminStatus.textContent=''},1600);
     }catch(err){
       adminStatus.textContent=err.message||'No se pudo actualizar el usuario.';
-      button.disabled=false;
-      button.textContent='Guardar';
+      saveButton.disabled=false;
+      saveButton.textContent='Guardar';
     }
   });
 
