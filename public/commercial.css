@@ -68,7 +68,10 @@ body[data-account-status="suspended"] #formSiniestro,
 body[data-account-status="suspended"] #resultado,
 body[data-account-status="inactive"] .siniestro-start,
 body[data-account-status="inactive"] #formSiniestro,
-body[data-account-status="inactive"] #resultado{display:none!important}
+body[data-account-status="inactive"] #resultado,
+body[data-account-status="expired"] .siniestro-start,
+body[data-account-status="expired"] #formSiniestro,
+body[data-account-status="expired"] #resultado{display:none!important}
 
 .admin-manage{display:grid;grid-template-columns:120px 110px 92px 132px auto;gap:6px;align-items:center;min-width:600px}
 .admin-manage select,.admin-manage input{border:1px solid #bfd5e3;border-radius:8px;padding:7px 8px;font:inherit;font-size:12px;background:#fff}
