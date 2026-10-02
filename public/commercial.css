@@ -203,3 +203,9 @@ body[data-account-status="expired"] #resultado{display:none!important}
 .commercial-modal-card h2{font-size:21px;margin-bottom:9px}
 .commercial-modal-card p{font-size:14px;line-height:1.55;margin-bottom:20px}
 .commercial-modal-card .primary{min-width:120px}
+
+.admin-usage-main{font-weight:800;color:var(--star-navy);white-space:nowrap}
+.admin-usage-main span{font-weight:600;color:#7a8f9f}
+.admin-usage-detail{margin-top:3px;font-size:11px;color:#7a8f9f;white-space:nowrap}
+.admin-manage{grid-template-columns:125px 100px 150px 135px auto auto auto;min-width:790px}
+.admin-renew-user,.admin-reset-user{white-space:nowrap}
