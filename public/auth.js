@@ -110,11 +110,12 @@
         accountNotice?.classList.add('hidden');
       }else{
         accountNotice?.classList.remove('hidden');
-        const labels={pending:'Pendiente de aprobación',active:'Cuenta habilitada',suspended:'Cuenta suspendida',inactive:'Cuenta inactiva'};
+        const labels={pending:'Pendiente de aprobación',active:'Cuenta habilitada',suspended:'Cuenta suspendida',inactive:'Cuenta inactiva',expired:'Acceso vencido'};
         accountNoticeTitle.textContent=labels[status]||'Estado de tu cuenta';
         if(status==='pending') accountNoticeText.textContent='Tu cuenta ya fue creada y confirmada. Un administrador debe habilitarla antes de que puedas usar las herramientas.';
         else if(status==='suspended') accountNoticeText.textContent='Tu acceso está suspendido. Contactá al administrador para revisarlo.';
         else if(status==='inactive') accountNoticeText.textContent='Tu cuenta no está habilitada actualmente.';
+        else if(status==='expired') accountNoticeText.textContent='Tu acceso venció. Contactá al administrador para renovarlo.';
         else accountNoticeText.textContent='Tu cuenta está habilitada para usar STAR Siniestros.';
 
         const limit=Number(account.monthly_limit||0);
@@ -332,7 +333,7 @@
 
     adminTotal.textContent=adminUsers.length;
     adminConfirmed.textContent=adminUsers.filter(u=>u.email_confirmed_at).length;
-    adminEnabled.textContent=adminUsers.filter(u=>u.commercial_status==='active'&&!adminIsSuspended(u)).length;
+    adminEnabled.textContent=adminUsers.filter(u=>u.commercial_status==='active'&&!adminIsSuspended(u)&&(!u.commercial_expires_at||new Date(u.commercial_expires_at).getTime()>=Date.now())).length;
 
     if(!list.length){
       adminUsersBody.innerHTML='<tr><td colspan="7" class="admin-empty">No hay usuarios para mostrar.</td></tr>';
@@ -342,7 +343,8 @@
     adminUsersBody.innerHTML=list.map(u=>{
       const admin=Boolean(u.is_admin);
       const suspended=adminIsSuspended(u);
-      const status=admin?'Administrador':(suspended?'Suspendido':String(u.commercial_status||'pending'));
+      const expired=!admin&&u.commercial_status==='active'&&u.commercial_expires_at&&new Date(u.commercial_expires_at).getTime()<Date.now();
+      const status=admin?'Administrador':(suspended?'Suspendido':(expired?'Vencido':String(u.commercial_status||'pending')));
       const usage=admin?'Sin límite':String(Number(u.commercial_usage_count||0))+' / '+(Number(u.commercial_monthly_limit||0)>0?Number(u.commercial_monthly_limit):'∞');
       const expiry=admin?'—':(u.commercial_expires_at?adminFormatDate(u.commercial_expires_at):'Sin vencimiento');
       const controls=admin?'—':
