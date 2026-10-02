@@ -674,6 +674,8 @@ const server=http.createServer(async(req,res)=>{
   }
   if(req.method==='POST'&&req.url==='/api/corregir-croquis'){
     const user=await requireUser(req,res); if(!user)return;
+    if(!checkRateLimit(user,res))return;
+    const commercial=await checkCommercialAccess(user,res); if(!commercial.ok)return;
     try{
       let body=''; for await(const chunk of req){body+=chunk;if(body.length>150_000)throw new Error('Solicitud demasiado grande');}
       const data=JSON.parse(body||'{}');
@@ -692,11 +694,14 @@ ${JSON.stringify(escena,null,2)}`;
       const apiJson=await apiRes.json(); if(!apiRes.ok){console.error(apiJson);return sendJson(res,apiRes.status,{error:apiJson?.error?.message||'Error al consultar la IA.'});}
       let outputText=apiJson.output_text; if(!outputText&&Array.isArray(apiJson.output)){for(const item of apiJson.output){if(item.type==='message'&&Array.isArray(item.content)){const tx=item.content.find(c=>c.type==='output_text');if(tx?.text){outputText=tx.text;break;}}}}
       if(!outputText)return sendJson(res,502,{error:'La IA no devolvió una corrección interpretable.'});
+      await registerUsage(user,'croquis');
       return sendJson(res,200,JSON.parse(outputText));
     }catch(err){console.error(err);return sendJson(res,500,{error:err.message||'Error interno.'});}
   }
   if(req.method==='POST'&&req.url==='/api/analizar'){
     const user=await requireUser(req,res); if(!user)return;
+    if(!checkRateLimit(user,res))return;
+    const commercial=await checkCommercialAccess(user,res); if(!commercial.ok)return;
     try{
       let body=''; for await(const chunk of req){body+=chunk;if(body.length>100_000)throw new Error('Solicitud demasiado grande');}
       const data=JSON.parse(body||'{}'); const relato=String(data.relato||'').trim(); const danos=String(data.danos||'').trim(); const croquisAyuda=String(data.croquisAyuda||'').trim(); const perfilPoliza=data.perfilPoliza||{}; const tipoSiniestro=String(data.tipoSiniestro||'choque').trim()||'choque'; const subtipoSiniestro=String(data.subtipoSiniestro||'').trim();
@@ -709,11 +714,14 @@ ${JSON.stringify(escena,null,2)}`;
       const apiJson=await apiRes.json(); if(!apiRes.ok){console.error(apiJson);return sendJson(res,apiRes.status,{error:apiJson?.error?.message||'Error al consultar la IA.'});}
       let outputText=apiJson.output_text; if(!outputText&&Array.isArray(apiJson.output)){for(const item of apiJson.output){if(item.type==='message'&&Array.isArray(item.content)){const t=item.content.find(c=>c.type==='output_text');if(t?.text){outputText=t.text;break;}}}}
       if(!outputText)return sendJson(res,502,{error:'La IA no devolvió un resultado interpretable.'});
+      await registerUsage(user,'analisis');
       return sendJson(res,200,JSON.parse(outputText));
     }catch(err){console.error(err);return sendJson(res,500,{error:err.message||'Error interno.'});}
   }
   if(req.method==='POST'&&req.url==='/api/analizar-poliza'){
     const user=await requireUser(req,res); if(!user)return;
+    if(!checkRateLimit(user,res))return;
+    const commercial=await checkCommercialAccess(user,res); if(!commercial.ok)return;
     try{
       let body=''; for await(const chunk of req){body+=chunk;if(body.length>15_000_000)throw new Error('La póliza es demasiado grande.');}
       const data=JSON.parse(body||'{}');
@@ -758,6 +766,7 @@ ${JSON.stringify(escena,null,2)}`;
         let outputText=apiJson.output_text;
         if(!outputText&&Array.isArray(apiJson.output)){for(const item of apiJson.output){if(item.type==='message'&&Array.isArray(item.content)){const t=item.content.find(c=>c.type==='output_text');if(t?.text){outputText=t.text;break;}}}}
         if(!outputText)return sendJson(res,502,{error:'La IA no devolvió un análisis interpretable de la póliza.'});
+        await registerUsage(user,'poliza');
         return sendJson(res,200,JSON.parse(outputText));
       } finally {
         fetch(`https://api.openai.com/v1/files/${fileId}`,{method:'DELETE',headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`}}).catch(()=>{});
