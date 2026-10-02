@@ -572,18 +572,30 @@ function serveStatic(req,res){
 
 const server=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&req.url==='/health'){
-    return sendJson(res,200,{ok:true,version:'0.14.1-commercial',time:new Date().toISOString()});
+    return sendJson(res,200,{ok:true,version:'0.15.0-commercial',time:new Date().toISOString()});
   }
   if(req.method==='GET'&&req.url==='/api/public-config'){
     return sendJson(res,200,{supabaseUrl:SUPABASE_URL,supabasePublishableKey:SUPABASE_PUBLISHABLE_KEY});
   }
   if(req.method==='GET'&&req.url==='/api/me'){
     const user=await requireUser(req,res); if(!user)return;
-    const email=String(user.email||'').trim().toLowerCase();
+    const full=isAdminUser(user)?user:(await getAdminUserById(user.id)||user);
+    const meta=commercialMeta(full);
+    const month=currentUsageMonth();
+    const used=meta.usage_month===month?meta.usage_count:0;
     return sendJson(res,200,{
       id:user.id,
       email:user.email||'',
-      role:email&&ADMIN_EMAIL&&email===ADMIN_EMAIL?'admin':'user'
+      role:isAdminUser(user)?'admin':'user',
+      account:{
+        status:meta.status,
+        plan:meta.plan,
+        expires_at:meta.expires_at,
+        monthly_limit:meta.monthly_limit,
+        usage_count:used,
+        usage_month:month,
+        usage_breakdown:meta.usage_month===month?meta.usage_breakdown:{}
+      }
     });
   }
   if(req.method==='GET'&&req.url==='/api/admin/users'){
@@ -592,15 +604,25 @@ const server=http.createServer(async(req,res)=>{
     if(!supabaseAdmin)return sendJson(res,500,{error:'Supabase no está configurado para administración.'});
     const {data,error}=await supabaseAdmin.auth.admin.listUsers({page:1,perPage:200});
     if(error)return sendJson(res,500,{error:'No se pudieron cargar los usuarios.'});
-    const users=(data?.users||[]).map(u=>({
-      id:u.id,
-      email:u.email||'',
-      created_at:u.created_at||null,
-      last_sign_in_at:u.last_sign_in_at||null,
-      email_confirmed_at:u.email_confirmed_at||u.confirmed_at||null,
-      banned_until:u.banned_until||null,
-      is_admin:String(u.email||'').trim().toLowerCase()===ADMIN_EMAIL
-    }));
+    const users=(data?.users||[]).map(u=>{
+      const meta=commercialMeta(u);
+      const month=currentUsageMonth();
+      return {
+        id:u.id,
+        email:u.email||'',
+        created_at:u.created_at||null,
+        last_sign_in_at:u.last_sign_in_at||null,
+        email_confirmed_at:u.email_confirmed_at||u.confirmed_at||null,
+        banned_until:u.banned_until||null,
+        is_admin:String(u.email||'').trim().toLowerCase()===ADMIN_EMAIL,
+        commercial_status:meta.status,
+        commercial_plan:meta.plan,
+        commercial_expires_at:meta.expires_at,
+        commercial_monthly_limit:meta.monthly_limit,
+        commercial_usage_count:meta.usage_month===month?meta.usage_count:0,
+        commercial_usage_breakdown:meta.usage_month===month?meta.usage_breakdown:{}
+      };
+    });
     return sendJson(res,200,{users,total:users.length});
   }
   if(req.method==='POST'&&req.url==='/api/admin/users/status'){
@@ -620,6 +642,32 @@ const server=http.createServer(async(req,res)=>{
     const {error:updateError}=await supabaseAdmin.auth.admin.updateUserById(id,{ban_duration:enabled?'none':'876000h'});
     if(updateError)return sendJson(res,500,{error:'No se pudo actualizar el usuario.'});
     return sendJson(res,200,{ok:true,enabled});
+  }
+  if(req.method==='POST'&&req.url==='/api/admin/users/profile'){
+    const user=await requireUser(req,res); if(!user)return;
+    if(!isAdminUser(user))return sendJson(res,403,{error:'No tenés permisos de administrador.'});
+    if(!supabaseAdmin)return sendJson(res,500,{error:'Supabase no está configurado para administración.'});
+    let body=''; for await(const chunk of req){body+=chunk;if(body.length>30_000)throw new Error('Solicitud demasiado grande');}
+    const data=JSON.parse(body||'{}');
+    const id=String(data.id||'').trim();
+    if(!id)return sendJson(res,400,{error:'Falta identificar al usuario.'});
+    const target=await getAdminUserById(id);
+    if(!target)return sendJson(res,404,{error:'No se encontró el usuario.'});
+    if(isAdminUser(target))return sendJson(res,400,{error:'La cuenta administradora principal no se modifica desde el panel.'});
+    const status=['pending','active','suspended','inactive'].includes(String(data.status))?String(data.status):'pending';
+    const plan=['prueba','basico','pro','personalizado'].includes(String(data.plan))?String(data.plan):'prueba';
+    const expires_at=data.expires_at?new Date(data.expires_at).toISOString():null;
+    const monthly_limit=Math.max(0,Math.min(100000,Number(data.monthly_limit)||0));
+    const app_metadata={
+      ...(target.app_metadata||{}),
+      commercial_status:status,
+      commercial_plan:plan,
+      commercial_expires_at:expires_at,
+      commercial_monthly_limit:monthly_limit
+    };
+    const {error}=await supabaseAdmin.auth.admin.updateUserById(id,{app_metadata});
+    if(error)return sendJson(res,500,{error:'No se pudo actualizar el usuario.'});
+    return sendJson(res,200,{ok:true});
   }
   if(req.method==='GET'&&(req.url==='/'||req.url==='/index.html')){
     console.log('[HTTP]',req.method,req.url,new Date().toISOString());
@@ -721,4 +769,4 @@ ${JSON.stringify(escena,null,2)}`;
 server.keepAliveTimeout=65_000;
 server.headersTimeout=66_000;
 server.requestTimeout=120_000;
-server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros comercial v0.14.1: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
+server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros comercial v0.15.0: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
