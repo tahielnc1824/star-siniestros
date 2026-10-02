@@ -573,7 +573,27 @@ function serveStatic(req,res){
 
 const server=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&req.url==='/health'){
-    return sendJson(res,200,{ok:true,version:'0.15.1-commercial',time:new Date().toISOString()});
+    return sendJson(res,200,{ok:true,version:'0.15.3-commercial',time:new Date().toISOString()});
+  }
+  if(req.method==='GET'&&req.url==='/health/commercial'){
+    let supabaseAdminReachable=false;
+    if(supabaseAdmin){
+      try{
+        const {error}=await supabaseAdmin.auth.admin.listUsers({page:1,perPage:1});
+        supabaseAdminReachable=!error;
+      }catch{}
+    }
+    return sendJson(res,200,{
+      ok:Boolean(process.env.OPENAI_API_KEY&&SUPABASE_URL&&SUPABASE_PUBLISHABLE_KEY&&SUPABASE_SECRET_KEY&&ADMIN_EMAIL&&supabaseAdminReachable),
+      checks:{
+        openai:Boolean(process.env.OPENAI_API_KEY),
+        supabase_public:Boolean(SUPABASE_URL&&SUPABASE_PUBLISHABLE_KEY),
+        supabase_admin:Boolean(SUPABASE_SECRET_KEY&&supabaseAdminReachable),
+        admin_email:Boolean(ADMIN_EMAIL)
+      },
+      version:'0.15.3-commercial',
+      time:new Date().toISOString()
+    });
   }
   if(req.method==='GET'&&req.url==='/api/public-config'){
     return sendJson(res,200,{supabaseUrl:SUPABASE_URL,supabasePublishableKey:SUPABASE_PUBLISHABLE_KEY});
@@ -673,6 +693,64 @@ const server=http.createServer(async(req,res)=>{
     const {error}=await supabaseAdmin.auth.admin.updateUserById(id,{app_metadata});
     if(error)return sendJson(res,500,{error:'No se pudo actualizar el usuario.'});
     return sendJson(res,200,{ok:true});
+  }
+  if(req.method==='POST'&&req.url==='/api/admin/users/reset-usage'){
+    const user=await requireUser(req,res); if(!user)return;
+    if(!isAdminUser(user))return sendJson(res,403,{error:'No tenés permisos de administrador.'});
+    if(!supabaseAdmin)return sendJson(res,500,{error:'Supabase no está configurado para administración.'});
+    try{
+      let body=''; for await(const chunk of req){body+=chunk;if(body.length>20_000)throw new Error('Solicitud demasiado grande');}
+      const data=JSON.parse(body||'{}');
+      const id=String(data.id||'').trim();
+      if(!id)return sendJson(res,400,{error:'Falta identificar al usuario.'});
+      const target=await getAdminUserById(id);
+      if(!target)return sendJson(res,404,{error:'No se encontró el usuario.'});
+      if(isAdminUser(target))return sendJson(res,400,{error:'La cuenta administradora no tiene límite de usos.'});
+      const {error}=await supabaseAdmin.auth.admin.updateUserById(id,{
+        app_metadata:{
+          ...(target.app_metadata||{}),
+          commercial_usage_month:currentUsageMonth(),
+          commercial_usage_count:0,
+          commercial_usage_breakdown:{}
+        }
+      });
+      if(error)return sendJson(res,500,{error:'No se pudo reiniciar el consumo.'});
+      return sendJson(res,200,{ok:true});
+    }catch(err){
+      console.error(err);
+      return sendJson(res,500,{error:err.message||'No se pudo reiniciar el consumo.'});
+    }
+  }
+  if(req.method==='POST'&&req.url==='/api/admin/users/renew'){
+    const user=await requireUser(req,res); if(!user)return;
+    if(!isAdminUser(user))return sendJson(res,403,{error:'No tenés permisos de administrador.'});
+    if(!supabaseAdmin)return sendJson(res,500,{error:'Supabase no está configurado para administración.'});
+    try{
+      let body=''; for await(const chunk of req){body+=chunk;if(body.length>20_000)throw new Error('Solicitud demasiado grande');}
+      const data=JSON.parse(body||'{}');
+      const id=String(data.id||'').trim();
+      const days=Math.max(1,Math.min(3650,Number(data.days)||30));
+      if(!id)return sendJson(res,400,{error:'Falta identificar al usuario.'});
+      const target=await getAdminUserById(id);
+      if(!target)return sendJson(res,404,{error:'No se encontró el usuario.'});
+      if(isAdminUser(target))return sendJson(res,400,{error:'La cuenta administradora no necesita renovación.'});
+      const base=(target.app_metadata?.commercial_expires_at&&new Date(target.app_metadata.commercial_expires_at).getTime()>Date.now())
+        ?new Date(target.app_metadata.commercial_expires_at)
+        :new Date();
+      base.setDate(base.getDate()+days);
+      const {error}=await supabaseAdmin.auth.admin.updateUserById(id,{
+        app_metadata:{
+          ...(target.app_metadata||{}),
+          commercial_status:'active',
+          commercial_expires_at:base.toISOString()
+        }
+      });
+      if(error)return sendJson(res,500,{error:'No se pudo renovar el acceso.'});
+      return sendJson(res,200,{ok:true,expires_at:base.toISOString()});
+    }catch(err){
+      console.error(err);
+      return sendJson(res,500,{error:err.message||'No se pudo renovar el acceso.'});
+    }
   }
   if(req.method==='GET'&&(req.url==='/'||req.url==='/index.html')){
     console.log('[HTTP]',req.method,req.url,new Date().toISOString());
@@ -783,4 +861,4 @@ ${JSON.stringify(escena,null,2)}`;
 server.keepAliveTimeout=65_000;
 server.headersTimeout=66_000;
 server.requestTimeout=120_000;
-server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros comercial v0.15.1: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
+server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros comercial v0.15.3: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
