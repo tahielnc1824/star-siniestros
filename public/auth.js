@@ -396,6 +396,16 @@
   adminSearch?.addEventListener('input',renderAdminUsers);
   adminRefresh?.addEventListener('click',loadAdminSummary);
 
+  adminUsersBody?.addEventListener('change',event=>{
+    const plan=event.target.closest('.admin-plan-select');
+    if(!plan)return;
+    const wrap=plan.closest('.admin-manage');
+    const limit=wrap?.querySelector('.admin-limit-input');
+    if(!limit)return;
+    const defaults={prueba:30,basico:100,pro:300};
+    if(defaults[plan.value]!=null)limit.value=String(defaults[plan.value]);
+  });
+
   adminUsersBody?.addEventListener('click',async event=>{
     const button=event.target.closest('.admin-save-user');
     if(!button)return;
@@ -455,6 +465,9 @@
       }
     }
     const res=await nativeFetch(input,init);
+    if(res.ok && ['/api/analizar','/api/analizar-poliza','/api/corregir-croquis'].includes(url)){
+      setTimeout(()=>loadAccountRole(),50);
+    }
     if(url.startsWith('/api/') && res.status===401){
       saveSession(null);session=null;enterGate();showMessage('Tu sesión venció. Volvé a ingresar.','error');
     }
