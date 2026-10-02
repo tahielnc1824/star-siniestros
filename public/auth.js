@@ -2,10 +2,10 @@
   const $ = id => document.getElementById(id);
   const gate=$('authGate'), shell=$('appShell'), form=$('authForm'), email=$('authEmail'), pass=$('authPassword'),
     submit=$('authSubmit'), msg=$('authMessage'), toggle=$('authModeToggle'), title=$('authTitle'), subtitle=$('authSubtitle'),
-    userEmail=$('sessionEmail'), adminBadge=$('adminBadge'), adminPanelBtn=$('adminPanelBtn'), adminPanel=$('adminPanel'),
+    userEmail=$('sessionEmail'), usagePill=$('usagePill'), adminPanelBtn=$('adminPanelBtn'), adminPanel=$('adminPanel'),
     adminClose=$('adminClose'), adminTotal=$('adminTotal'), adminConfirmed=$('adminConfirmed'), adminEnabled=$('adminEnabled'),
     adminStatus=$('adminStatus'), adminSearch=$('adminSearch'), adminRefresh=$('adminRefresh'), adminUsersBody=$('adminUsersBody'),
-    accountNotice=$('accountNotice'), accountNoticeTitle=$('accountNoticeTitle'), accountNoticeText=$('accountNoticeText'), accountUsage=$('accountUsage'),
+    accountNotice=$('accountNotice'), accountNoticeText=$('accountNoticeText'),
     logout=$('logoutBtn'), forgot=$('forgotPassword'), forgotBox=$('forgotPasswordBox'),
     forgotEmail=$('forgotEmail'), forgotSubmit=$('forgotSubmit'), forgotCancel=$('forgotCancel'), resetBox=$('resetPasswordBox'),
     resetPass=$('resetPassword'), resetConfirm=$('resetPasswordConfirm'), resetSubmit=$('resetPasswordSubmit'), resetCancel=$('resetPasswordCancel');
@@ -99,31 +99,30 @@
       const data=await r.json();
       const isAdmin=data?.role==='admin';
       const account=data?.account||{};
-      adminBadge?.classList.toggle('hidden',!isAdmin);
       adminPanelBtn?.classList.toggle('hidden',!isAdmin);
       document.body.dataset.role=isAdmin?'admin':'user';
 
-      const status=isAdmin?'active':String(account.status||'pending');
-      document.body.dataset.accountStatus=status;
-
       if(isAdmin){
+        delete document.body.dataset.accountStatus;
         accountNotice?.classList.add('hidden');
-      }else{
-        accountNotice?.classList.remove('hidden');
-        const labels={pending:'Pendiente de aprobación',active:'Cuenta habilitada',suspended:'Cuenta suspendida',inactive:'Cuenta inactiva',expired:'Acceso vencido'};
-        accountNoticeTitle.textContent=labels[status]||'Estado de tu cuenta';
-        if(status==='pending') accountNoticeText.textContent='Tu cuenta ya fue creada y confirmada. Un administrador debe habilitarla antes de que puedas usar las herramientas.';
-        else if(status==='suspended') accountNoticeText.textContent='Tu acceso está suspendido. Contactá al administrador para revisarlo.';
-        else if(status==='inactive') accountNoticeText.textContent='Tu cuenta no está habilitada actualmente.';
-        else if(status==='expired') accountNoticeText.textContent='Tu acceso venció. Contactá al administrador para renovarlo.';
-        else accountNoticeText.textContent='Tu cuenta está habilitada para usar STAR Siniestros.';
-
-        const limit=Number(account.monthly_limit||0);
-        const used=Number(account.usage_count||0);
-        const expiry=account.expires_at?adminFormatDate(account.expires_at):'Sin vencimiento';
-        accountUsage.innerHTML='<strong>Plan: '+String(account.plan||'prueba')+'</strong><span>Uso del mes: '+used+(limit>0?' / '+limit:' / Sin límite')+'</span><span>Vencimiento: '+expiry+'</span>';
-        accountUsage.classList.toggle('hidden',status!=='active');
+        usagePill?.classList.add('hidden');
+        return;
       }
+
+      const active=String(account.status||'')==='active';
+      document.body.dataset.accountStatus=active?'active':'inactive';
+      accountNotice?.classList.toggle('hidden',active);
+      if(!active){
+        accountNoticeText.textContent='Tu cuenta todavía no está habilitada. Contactá al administrador para activar el acceso.';
+        usagePill?.classList.add('hidden');
+        return;
+      }
+
+      const limit=Number(account.monthly_limit||0);
+      const used=Number(account.usage_count||0);
+      const remaining=limit>0?Math.max(0,limit-used):null;
+      usagePill.textContent=remaining===null?'Usos sin límite':remaining+' usos disponibles';
+      usagePill.classList.remove('hidden');
     }catch{}
   }
   function enterApp(s){
@@ -131,15 +130,14 @@
     gate.classList.add('hidden');
     shell.classList.remove('hidden');
     userEmail.textContent=s?.user?.email||email.value||'Usuario';
-    adminBadge?.classList.add('hidden');
     loadAccountRole();
   }
   function enterGate(){
     shell.classList.add('hidden');
     gate.classList.remove('hidden');
     userEmail.textContent='';
-    adminBadge?.classList.add('hidden');
     adminPanelBtn?.classList.add('hidden');
+    usagePill?.classList.add('hidden');
     adminPanel?.classList.add('hidden');
     accountNotice?.classList.add('hidden');
     delete document.body.dataset.role;
@@ -333,42 +331,47 @@
 
     adminTotal.textContent=adminUsers.length;
     adminConfirmed.textContent=adminUsers.filter(u=>u.email_confirmed_at).length;
-    adminEnabled.textContent=adminUsers.filter(u=>u.commercial_status==='active'&&!adminIsSuspended(u)&&(!u.commercial_expires_at||new Date(u.commercial_expires_at).getTime()>=Date.now())).length;
+    adminEnabled.textContent=adminUsers.filter(u=>{
+      if(u.is_admin)return true;
+      const expired=u.commercial_expires_at&&new Date(u.commercial_expires_at).getTime()<Date.now();
+      return u.commercial_status==='active'&&!expired;
+    }).length;
 
     if(!list.length){
-      adminUsersBody.innerHTML='<tr><td colspan="7" class="admin-empty">No hay usuarios para mostrar.</td></tr>';
+      adminUsersBody.innerHTML='<tr><td colspan="6" class="admin-empty">No hay usuarios para mostrar.</td></tr>';
       return;
     }
 
     adminUsersBody.innerHTML=list.map(u=>{
       const admin=Boolean(u.is_admin);
-      const suspended=adminIsSuspended(u);
       const expired=!admin&&u.commercial_status==='active'&&u.commercial_expires_at&&new Date(u.commercial_expires_at).getTime()<Date.now();
-      const status=admin?'Administrador':(suspended?'Suspendido':(expired?'Vencido':String(u.commercial_status||'pending')));
-      const usage=admin?'Sin límite':String(Number(u.commercial_usage_count||0))+' / '+(Number(u.commercial_monthly_limit||0)>0?Number(u.commercial_monthly_limit):'∞');
+      const enabled=admin||(!expired&&u.commercial_status==='active');
+      const limit=Number(u.commercial_monthly_limit||0);
+      const used=Number(u.commercial_usage_count||0);
+      const remaining=limit>0?Math.max(0,limit-used):null;
+      const usage=admin?'Sin límite':(remaining===null?'Sin límite':remaining+' restantes ('+used+'/'+limit+')');
       const expiry=admin?'—':(u.commercial_expires_at?adminFormatDate(u.commercial_expires_at):'Sin vencimiento');
+      const existingDate=u.commercial_expires_at?String(u.commercial_expires_at).slice(0,10):'';
+
       const controls=admin?'—':
         '<div class="admin-manage" data-id="'+u.id+'">'+
-          '<select class="admin-status-select">'+
-            '<option value="pending" '+(u.commercial_status==='pending'?'selected':'')+'>Pendiente</option>'+
-            '<option value="active" '+(u.commercial_status==='active'?'selected':'')+'>Activo</option>'+
-            '<option value="suspended" '+(u.commercial_status==='suspended'?'selected':'')+'>Suspendido</option>'+
-            '<option value="inactive" '+(u.commercial_status==='inactive'?'selected':'')+'>Inactivo</option>'+
+          '<label class="admin-check"><input class="admin-enabled-input" type="checkbox" '+(enabled?'checked':'')+'> Habilitado</label>'+
+          '<input class="admin-limit-input" type="number" min="0" max="100000" value="'+limit+'" title="Cantidad de usos mensuales" placeholder="Usos/mes">'+
+          '<select class="admin-expiry-preset" title="Vencimiento">'+
+            '<option value="keep">Mantener vencimiento</option>'+
+            '<option value="none">Sin vencimiento</option>'+
+            '<option value="30">30 días</option>'+
+            '<option value="60">60 días</option>'+
+            '<option value="90">90 días</option>'+
+            '<option value="custom">Elegir fecha</option>'+
           '</select>'+
-          '<select class="admin-plan-select">'+
-            '<option value="prueba" '+(u.commercial_plan==='prueba'?'selected':'')+'>Prueba</option>'+
-            '<option value="basico" '+(u.commercial_plan==='basico'?'selected':'')+'>Básico</option>'+
-            '<option value="pro" '+(u.commercial_plan==='pro'?'selected':'')+'>Pro</option>'+
-            '<option value="personalizado" '+(u.commercial_plan==='personalizado'?'selected':'')+'>Personalizado</option>'+
-          '</select>'+
-          '<input class="admin-limit-input" type="number" min="0" max="100000" value="'+Number(u.commercial_monthly_limit||0)+'" title="Límite mensual">'+
-          '<input class="admin-expiry-input" type="date" value="'+(u.commercial_expires_at?String(u.commercial_expires_at).slice(0,10):'')+'" title="Vencimiento">'+
+          '<input class="admin-expiry-input hidden" type="date" value="'+existingDate+'" title="Fecha de vencimiento">'+
           '<button class="primary small admin-save-user">Guardar</button>'+
         '</div>';
+
       return '<tr>'+
         '<td><strong>'+String(u.email||'Sin email')+'</strong></td>'+
-        '<td>'+status+'</td>'+
-        '<td>'+String(u.commercial_plan||'prueba')+'</td>'+
+        '<td><span class="admin-access '+(enabled?'on':'off')+'">'+(admin?'Administrador':(enabled?'Habilitado':'Deshabilitado'))+'</span></td>'+
         '<td>'+usage+'</td>'+
         '<td>'+expiry+'</td>'+
         '<td>'+adminFormatDate(u.last_sign_in_at)+'</td>'+
@@ -399,13 +402,12 @@
   adminRefresh?.addEventListener('click',loadAdminSummary);
 
   adminUsersBody?.addEventListener('change',event=>{
-    const plan=event.target.closest('.admin-plan-select');
-    if(!plan)return;
-    const wrap=plan.closest('.admin-manage');
-    const limit=wrap?.querySelector('.admin-limit-input');
-    if(!limit)return;
-    const defaults={prueba:30,basico:100,pro:300};
-    if(defaults[plan.value]!=null)limit.value=String(defaults[plan.value]);
+    const preset=event.target.closest('.admin-expiry-preset');
+    if(!preset)return;
+    const wrap=preset.closest('.admin-manage');
+    const date=wrap?.querySelector('.admin-expiry-input');
+    if(!date)return;
+    date.classList.toggle('hidden',preset.value!=='custom');
   });
 
   adminUsersBody?.addEventListener('click',async event=>{
@@ -414,10 +416,21 @@
     const wrap=button.closest('.admin-manage');
     if(!wrap)return;
     const id=wrap.dataset.id;
-    const status=wrap.querySelector('.admin-status-select')?.value||'pending';
-    const plan=wrap.querySelector('.admin-plan-select')?.value||'prueba';
-    const monthly_limit=Number(wrap.querySelector('.admin-limit-input')?.value||0);
-    const expires_at=wrap.querySelector('.admin-expiry-input')?.value||null;
+    const enabled=Boolean(wrap.querySelector('.admin-enabled-input')?.checked);
+    const status=enabled?'active':'inactive';
+    const plan='personalizado';
+    const monthly_limit=Math.max(0,Number(wrap.querySelector('.admin-limit-input')?.value||0));
+    const preset=wrap.querySelector('.admin-expiry-preset')?.value||'keep';
+    let expires_at='__KEEP__';
+    if(preset==='none')expires_at=null;
+    else if(['30','60','90'].includes(preset)){
+      const d=new Date();
+      d.setDate(d.getDate()+Number(preset));
+      expires_at=d.toISOString();
+    }else if(preset==='custom'){
+      const raw=wrap.querySelector('.admin-expiry-input')?.value||'';
+      expires_at=raw?new Date(raw+'T23:59:59').toISOString():null;
+    }
 
     button.disabled=true;
     button.textContent='Guardando…';
