@@ -65,6 +65,96 @@ async function requireUser(req,res){
   }
 }
 
+
+function currentUsageMonth(){
+  const d=new Date();
+  return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0');
+}
+
+function commercialMeta(user){
+  if(isAdminUser(user)){
+    return {status:'active',plan:'admin',expires_at:null,monthly_limit:0,usage_month:currentUsageMonth(),usage_count:0,usage_breakdown:{}};
+  }
+  const m=user?.app_metadata||{};
+  return {
+    status:String(m.commercial_status||'pending'),
+    plan:String(m.commercial_plan||'prueba'),
+    expires_at:m.commercial_expires_at||null,
+    monthly_limit:Number.isFinite(Number(m.commercial_monthly_limit))?Number(m.commercial_monthly_limit):30,
+    usage_month:String(m.commercial_usage_month||''),
+    usage_count:Number(m.commercial_usage_count||0),
+    usage_breakdown:(m.commercial_usage_breakdown&&typeof m.commercial_usage_breakdown==='object')?m.commercial_usage_breakdown:{}
+  };
+}
+
+async function getAdminUserById(id){
+  if(!supabaseAdmin)return null;
+  const {data,error}=await supabaseAdmin.auth.admin.getUserById(id);
+  if(error||!data?.user)return null;
+  return data.user;
+}
+
+async function checkCommercialAccess(user,res){
+  if(isAdminUser(user))return {ok:true,user,meta:commercialMeta(user)};
+  const full=await getAdminUserById(user.id);
+  if(!full){
+    sendJson(res,500,{error:'No se pudo validar el estado comercial de la cuenta.'});
+    return {ok:false};
+  }
+  const meta=commercialMeta(full);
+  if(meta.status!=='active'){
+    const messages={pending:'Tu cuenta está pendiente de aprobación.',suspended:'Tu cuenta está suspendida.',inactive:'Tu cuenta no está habilitada.'};
+    sendJson(res,403,{error:messages[meta.status]||'Tu cuenta no está habilitada.',code:'ACCOUNT_'+meta.status.toUpperCase()});
+    return {ok:false};
+  }
+  if(meta.expires_at&&new Date(meta.expires_at).getTime()<Date.now()){
+    sendJson(res,403,{error:'Tu acceso está vencido. Contactá al administrador para renovarlo.',code:'ACCOUNT_EXPIRED'});
+    return {ok:false};
+  }
+  const month=currentUsageMonth();
+  const used=meta.usage_month===month?meta.usage_count:0;
+  if(meta.monthly_limit>0&&used>=meta.monthly_limit){
+    sendJson(res,429,{error:'Alcanzaste el límite mensual de tu plan.',code:'USAGE_LIMIT'});
+    return {ok:false};
+  }
+  return {ok:true,user:full,meta:{...meta,usage_month:month,usage_count:used}};
+}
+
+async function registerUsage(user,kind){
+  if(isAdminUser(user)||!supabaseAdmin)return;
+  const full=await getAdminUserById(user.id);
+  if(!full)return;
+  const meta=commercialMeta(full);
+  const month=currentUsageMonth();
+  const same=meta.usage_month===month;
+  const count=(same?meta.usage_count:0)+1;
+  const breakdown=same?{...meta.usage_breakdown}:{};
+  breakdown[kind]=Number(breakdown[kind]||0)+1;
+  await supabaseAdmin.auth.admin.updateUserById(user.id,{
+    app_metadata:{
+      ...(full.app_metadata||{}),
+      commercial_usage_month:month,
+      commercial_usage_count:count,
+      commercial_usage_breakdown:breakdown
+    }
+  });
+}
+
+const userRate=new Map();
+function checkRateLimit(user,res){
+  if(isAdminUser(user))return true;
+  const now=Date.now();
+  const windowMs=60_000;
+  const max=12;
+  const arr=(userRate.get(user.id)||[]).filter(t=>now-t<windowMs);
+  if(arr.length>=max){
+    sendJson(res,429,{error:'Estás haciendo demasiadas solicitudes seguidas. Esperá un minuto e intentá nuevamente.',code:'RATE_LIMIT'});
+    userRate.set(user.id,arr);
+    return false;
+  }
+  arr.push(now); userRate.set(user.id,arr); return true;
+}
+
 const schema = {
   type: 'object', additionalProperties: false,
   properties: {
