@@ -573,7 +573,7 @@ function serveStatic(req,res){
 
 const server=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&req.url==='/health'){
-    return sendJson(res,200,{ok:true,version:'0.15.3-commercial',time:new Date().toISOString()});
+    return sendJson(res,200,{ok:true,version:'0.15.4-commercial',time:new Date().toISOString()});
   }
   if(req.method==='GET'&&req.url==='/health/commercial'){
     let supabaseAdminReachable=false;
@@ -591,7 +591,7 @@ const server=http.createServer(async(req,res)=>{
         supabase_admin:Boolean(SUPABASE_SECRET_KEY&&supabaseAdminReachable),
         admin_email:Boolean(ADMIN_EMAIL)
       },
-      version:'0.15.3-commercial',
+      version:'0.15.4-commercial',
       time:new Date().toISOString()
     });
   }
@@ -861,4 +861,4 @@ ${JSON.stringify(escena,null,2)}`;
 server.keepAliveTimeout=65_000;
 server.headersTimeout=66_000;
 server.requestTimeout=120_000;
-server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros comercial v0.15.3: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
+server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros comercial v0.15.4: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
