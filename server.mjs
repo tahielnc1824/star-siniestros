@@ -130,7 +130,7 @@ async function registerUsage(user,kind){
   const count=(same?meta.usage_count:0)+1;
   const breakdown=same?{...meta.usage_breakdown}:{};
   breakdown[kind]=Number(breakdown[kind]||0)+1;
-  await supabaseAdmin.auth.admin.updateUserById(user.id,{
+  const {error}=await supabaseAdmin.auth.admin.updateUserById(user.id,{
     app_metadata:{
       ...(full.app_metadata||{}),
       commercial_usage_month:month,
@@ -138,6 +138,7 @@ async function registerUsage(user,kind){
       commercial_usage_breakdown:breakdown
     }
   });
+  if(error)console.error('No se pudo registrar el consumo del usuario',user.id,error);
 }
 
 const userRate=new Map();
@@ -572,7 +573,7 @@ function serveStatic(req,res){
 
 const server=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&req.url==='/health'){
-    return sendJson(res,200,{ok:true,version:'0.15.0-commercial',time:new Date().toISOString()});
+    return sendJson(res,200,{ok:true,version:'0.15.1-commercial',time:new Date().toISOString()});
   }
   if(req.method==='GET'&&req.url==='/api/public-config'){
     return sendJson(res,200,{supabaseUrl:SUPABASE_URL,supabasePublishableKey:SUPABASE_PUBLISHABLE_KEY});
@@ -655,9 +656,12 @@ const server=http.createServer(async(req,res)=>{
     const target=await getAdminUserById(id);
     if(!target)return sendJson(res,404,{error:'No se encontró el usuario.'});
     if(isAdminUser(target))return sendJson(res,400,{error:'La cuenta administradora principal no se modifica desde el panel.'});
-    const status=['pending','active','suspended','inactive'].includes(String(data.status))?String(data.status):'pending';
-    const plan=['prueba','basico','pro','personalizado'].includes(String(data.plan))?String(data.plan):'prueba';
-    const expires_at=data.expires_at?new Date(data.expires_at).toISOString():null;
+    const status=String(data.status)==='active'?'active':'inactive';
+    const plan='personalizado';
+    let expires_at=target.app_metadata?.commercial_expires_at||null;
+    if(data.expires_at!=='__KEEP__'){
+      expires_at=data.expires_at?new Date(data.expires_at).toISOString():null;
+    }
     const monthly_limit=Math.max(0,Math.min(100000,Number(data.monthly_limit)||0));
     const app_metadata={
       ...(target.app_metadata||{}),
@@ -779,4 +783,4 @@ ${JSON.stringify(escena,null,2)}`;
 server.keepAliveTimeout=65_000;
 server.headersTimeout=66_000;
 server.requestTimeout=120_000;
-server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros comercial v0.15.0: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
+server.listen(PORT,'0.0.0.0',()=>{console.log(`Asistente de siniestros comercial v0.15.1: http://localhost:${PORT}`);console.log(`Modelo: ${MODEL}`);});
